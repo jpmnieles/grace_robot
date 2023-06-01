@@ -11,7 +11,8 @@ from rospy_message_converter import message_converter
 class ROSMotorClient(object):
     
 
-    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=False):
+        self.debug = debug
         self.degrees = degrees
         rospy.init_node('hr_motor_client')
         self.set_motor_names(motors)
@@ -31,14 +32,22 @@ class ROSMotorClient(object):
                     self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
                     self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
     
-    def _convert_to_angle(self, actuator, position):
+    def _convert_to_angle(self, motor, position):
         if self.degrees:
             unit = 360
         else:
             unit = math.pi
-        angle = ((position-self._motor_limits[actuator]['init'])/4096)*unit
-        return angle              
+        angle = ((position-self._motor_limits[motor]['init'])/4096)*unit
+        return angle
 
+    def _convert_to_motor_int(self, motor, angle):
+        if self.degrees:
+            unit = 360
+        else:
+            unit = math.pi
+        angle = round((angle/unit)*4096 + self._motor_limits[motor]['init'])
+        return angle
+        
     def _capture_limits(self, motor):
         min = motors_dict[motor]['motor_min']
         init = motors_dict[motor]['init']
@@ -62,6 +71,30 @@ class ROSMotorClient(object):
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
         self.publisher.publish(TargetPosture(**args))
+
+    def move(self, values):
+        init_state = self.state
+        targets = [self._convert_to_motor_int(self.names[i],x) for i,x in enumerate(values)]
+        if self.degrees:
+            values = [math.radians(x) for x in values]
+        args = {"names":self.names, "values":values}
+        self.publisher.publish(TargetPosture(**args))
+        while self._check_target(targets):
+            time.sleep(0.02)
+            if self.debug:
+                print("[DEBUG] Target not yet reached")
+            pass
+        final_state = self.state
+        return final_state
+    
+    def _check_target(self, targets):
+        confirmed = False
+        for i in range(self.num_names):
+            position = self._motor_state[i]["position"] 
+            confirmed |= position > (targets[i]+1) or position  < (targets[i]-1)
+            if self.debug:
+                print('[DEBUG] position:', position, 'target:', targets[i], 'confirmed:',confirmed)
+        return confirmed
 
     def exit(self):
         rospy.signal_shutdown('End of Node')
@@ -88,7 +121,7 @@ motors_dict.update(body_dict['motors'])
 if __name__ == '__main__':
 
     # Instantiation
-    client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True)
+    client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=True)
 
     # State
     start = time.time()
@@ -96,16 +129,10 @@ if __name__ == '__main__':
     end = time.time()
     print("State Elapsed Time:", end-start)
 
-    # Move
+    # Move with Target
     values = eval(input("Enter the motor commands in list:"))
     start = time.time()
-    client.simple_move(values)
-    time.sleep(1)
+    state = client.move(values)
     end = time.time()
     print("Move Command Elapsed Time:", end-start)
-
-    # State
-    start = time.time()
-    print(client.state)
-    end = time.time()
-    print("State Elapsed Time:", end-start)
+    print(state)
