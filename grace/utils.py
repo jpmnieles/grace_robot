@@ -4,6 +4,7 @@ import time
 import yaml
 import rospy
 from hr_msgs.msg import TargetPosture, MotorStateList
+from rospy_message_converter import message_converter
 
 
 class ROSMotorClient(object):
@@ -25,7 +26,7 @@ class ROSMotorClient(object):
         for x in msg.motor_states:
             for i, name in enumerate(self.names):
                 if x.name == name:
-                    self._motor_state[i] = x
+                    self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
             
     def set_motor_names(self, names: list):
         self.names = names
