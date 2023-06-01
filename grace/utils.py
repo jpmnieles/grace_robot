@@ -27,10 +27,18 @@ class ROSMotorClient(object):
             for i, name in enumerate(self.names):
                 if x.name == name:
                     self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
-            
+
+    def _capture_limits(self, motor):
+        min = motors_dict[motor]['motor_min']
+        init = motors_dict[motor]['init']
+        max = motors_dict[motor]['motor_max']
+        limits = {'min': min, 'init': init, 'max': max}
+        return limits
+
     def set_motor_names(self, names: list):
         self.names = names
         self.num_names = len(self.names)
+        self._motor_limits = {motor: self._capture_limits(motor) for motor in self.names}
 
     @property
     def state(self):
