@@ -55,7 +55,9 @@ class ROSMotorClient(object):
     def state(self):
         return self._motor_state
 
-    def move(self, values):
+    def simple_move(self, values):
+        """Commanding move without waiting
+        """
         if self.degrees:
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
@@ -97,7 +99,7 @@ if __name__ == '__main__':
     # Move
     values = eval(input("Enter the motor commands in list:"))
     start = time.time()
-    client.move(values)
+    client.simple_move(values)
     time.sleep(1)
     end = time.time()
     print("Move Command Elapsed Time:", end-start)
