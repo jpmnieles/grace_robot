@@ -1,0 +1,976 @@
+motors:
+  BrowCenter:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Brow
+    hardware: feetech
+    init: 1925
+    labelleft: BrowCenter
+    max: 1.012427320004523
+    min: -0.9924855697620099
+    motor_id: 2
+    motor_max: 2585
+    motor_min: 1278
+    name: BrowCenter
+    pau:
+      function:
+      - imin: 0.495026778882938
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: brow_center_DN;brow_center_UP
+    protocol: 0
+    sort_no: 3
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  BrowInnerLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Brow
+    hardware: feetech
+    init: 2100
+    labelleft: BrowInnerLeft
+    max: 0.9203884727313847
+    min: -0.9203884727313847
+    motor_id: 1
+    motor_max: 2700
+    motor_min: 1500
+    name: BrowInnerLeft
+    pau:
+      function:
+      - imin: 0.5
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: brow_inner_UP.L;brow_inner_DN.L
+    protocol: 0
+    sort_no: 2
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  BrowInnerRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Brow
+    hardware: feetech
+    init: 2200
+    labelleft: BrowInnerRight
+    max: 0.9203884727313847
+    min: -0.9203884727313847
+    motor_id: 3
+    motor_max: 2800
+    motor_min: 1600
+    name: BrowInnerRight
+    pau:
+      function:
+      - imin: 0.5
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: brow_inner_DN.R;brow_inner_UP.R
+    protocol: 0
+    sort_no: 4
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  BrowOuterLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Brow
+    hardware: feetech
+    init: 2150
+    labelleft: BrowOuterLeft
+    max: 0.9970875121256667
+    min: -1.1504855909142309
+    motor_id: 0
+    motor_max: 2800
+    motor_min: 1400
+    name: BrowOuterLeft
+    pau:
+      function:
+      - imin: 0.5357142857142857
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: brow_outer_UP.L;brow_outer_DN.L
+    protocol: 0
+    sort_no: 1
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  BrowOuterRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Brow
+    hardware: feetech
+    init: 1780
+    labelleft: BrowOuterRight
+    max: 1.1811652066719438
+    min: -0.966407896367954
+    motor_id: 4
+    motor_max: 2550
+    motor_min: 1150
+    name: BrowOuterRight
+    pau:
+      function:
+      - imin: 0.45
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: brow_outer_DN.R;brow_outer_UP.R
+    protocol: 0
+    sort_no: 5
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  CheekSquintLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2000
+    labelleft: CheekSquintLeft
+    max: 0.0
+    min: -1.7640779060684872
+    motor_id: 5
+    motor_max: 2000
+    motor_min: 850
+    name: CheekSquintLeft
+    pau:
+      function:
+      - max: 0
+        min: 1
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: wince.L
+    protocol: 0
+    sort_no: 6
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  CheekSquintRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2100
+    labelleft: CheekSquintRight
+    max: 1.7640779060684872
+    min: 0.0
+    motor_id: 6
+    motor_max: 3250
+    motor_min: 2100
+    name: CheekSquintRight
+    pau:
+      function:
+      - max: 1
+        min: 0
+        name: linear
+      - name: linear
+        scale: 1
+        translate: 0
+      parser:
+        name: fsshapekey
+        shapekey: wince.R
+    protocol: 0
+    sort_no: 7
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  EyeTurnLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 1980
+    labelleft: EyeTurnLeft
+    max: 0.21015536794033285
+    min: -0.19941750242513334
+    motor_id: 14
+    motor_max: 2117
+    motor_min: 1850
+    name: EyeTurnLeft
+    pau:
+      function:
+      - imin: 0.4868913857677903
+        name: weightedsum
+        terms:
+        - imax: 1
+          max: 0.44
+          min: 0
+        - imax: 0
+          max: -0.5
+          min: 0
+      parser:
+        name: getproperty
+        property: m_eyeGazeLeftYaw;m_eyeGazeLeftYaw
+    protocol: 0
+    sort_no: 40
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  EyeTurnRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2050
+    labelleft: EyeTurnRight
+    max: 0.30679615757712825
+    min: -0.1856116753341626
+    motor_id: 15
+    motor_max: 2250
+    motor_min: 1929
+    name: EyeTurnRight
+    pau:
+      function:
+      - imin: 0.37694704049844235
+        name: weightedsum
+        terms:
+        - imax: 1
+          max: 0.44
+          min: 0
+        - imax: 0
+          max: -0.5
+          min: 0
+      parser:
+        name: getproperty
+        property: m_eyeGazeRightYaw;m_eyeGazeRightYaw
+    protocol: 0
+    sort_no: 41
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  EyesUpDown:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2320
+    labelleft: EyesUpDown
+    max: 0.7363107781851077
+    min: -0.6442719309119693
+    motor_id: 16
+    motor_max: 2800
+    motor_min: 1900
+    name: EyesUpDown
+    pau:
+      function:
+      - max: 1
+        min: -0.6
+        name: linear
+      parser:
+        name: getproperty
+        property: m_eyeGazeLeftPitch
+    protocol: 0
+    sort_no: 42
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  FrownLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 1400
+    labelleft: FrownLeft
+    max: 0.8130098175793898
+    min: 0.0
+    motor_id: 32
+    motor_max: 1930
+    motor_min: 1400
+    name: FrownLeft
+    pau:
+      function:
+      - max: 1
+        min: 0
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: lips-frown.L
+    protocol: 0
+    sort_no: 71
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  FrownRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2680
+    labelleft: FrownRight
+    max: 0.0
+    min: -0.8130098175793898
+    motor_id: 33
+    motor_max: 2680
+    motor_min: 2150
+    name: FrownRight
+    pau:
+      function:
+      - max: 0
+        min: 1
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: lips-frown.R
+    protocol: 0
+    sort_no: 72
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  Jaw:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2250
+    labelleft: Jaw
+    max: 0.0
+    min: -1.227184630308513
+    motor_id: 40
+    motor_max: 2250
+    motor_min: 1450
+    name: Jaw
+    pau:
+      function:
+      - max: 0
+        min: 1
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: lip-JAW.DN
+    protocol: 0
+    sort_no: 76
+    speed: 4000
+    topic: feetechHead
+    transmission: 1
+  LipsStretchLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2075
+    labelleft: LipsStretchLeft
+    max: 0.4678641403051206
+    min: -0.22242721424341796
+    motor_id: 26
+    motor_max: 2380
+    motor_min: 1930
+    name: LipsStretchLeft
+    pau:
+      function:
+      - imin: 0.32222222222222224
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lips-narrow.L;lips-wide.L
+    protocol: 0
+    sort_no: 67
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LipsStretchRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2075
+    labelleft: LipsStretchRight
+    max: 0.19174759848570513
+    min: -0.49854375606283335
+    motor_id: 27
+    motor_max: 2200
+    motor_min: 1750
+    name: LipsStretchRight
+    pau:
+      function:
+      - imin: 0.7222222222222222
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lips-wide.R;lips-narrow.R
+    protocol: 0
+    sort_no: 68
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LowerLidLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2053
+    labelleft: LowerLidLeft
+    max: 0.37889325460775336
+    min: -0.38809713933506723
+    motor_id: 12
+    motor_max: 2300
+    motor_min: 1800
+    name: LowerLidLeft
+    pau:
+      function:
+      - imin: 0.506
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: eye-flare.LO.L;eye-blink.LO.L
+    protocol: 0
+    sort_no: 33
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LowerLidRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2165
+    labelleft: LowerLidRight
+    max: 0.20708740636456155
+    min: -0.5599029875782591
+    motor_id: 13
+    motor_max: 2300
+    motor_min: 1800
+    name: LowerLidRight
+    pau:
+      function:
+      - imin: 0.73
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: eye-blink.LO.R;eye-flare.LO.R
+    protocol: 0
+    sort_no: 34
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LowerLipCenter:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2350
+    labelleft: LowerLipCenter
+    max: 0.15339807878856412
+    min: -0.46019423636569234
+    motor_id: 24
+    motor_max: 2450
+    motor_min: 2050
+    name: LowerLipCenter
+    pau:
+      function:
+      - imin: 0.75
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-DN.C.DN;lip-DN.C.UP
+    protocol: 0
+    sort_no: 65
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LowerLipLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2300
+    labelleft: LowerLipLeft
+    max: 0.23009711818284617
+    min: -0.6135923151542565
+    motor_id: 23
+    motor_max: 2450
+    motor_min: 1900
+    name: LowerLipLeft
+    pau:
+      function:
+      - imin: 0.7272727272727273
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-DN.L.DN;lip-DN.L.UP
+    protocol: 0
+    sort_no: 64
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  LowerLipRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 1650
+    labelleft: LowerLipRight
+    max: 0.6135923151542565
+    min: -0.23009711818284617
+    motor_id: 25
+    motor_max: 2050
+    motor_min: 1500
+    name: LowerLipRight
+    pau:
+      function:
+      - imin: 0.2727272727272727
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-DN.R.UP;lip-DN.R.DN
+    protocol: 0
+    sort_no: 66
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  SmileLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 3260
+    labelleft: SmileLeft
+    max: 0.0
+    min: -1.7027186745530618
+    motor_id: 43
+    motor_max: 3260
+    motor_min: 2150
+    name: SmileLeft
+    pau:
+      function:
+      - max: 0
+        min: 1
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: lips-smile.L
+    protocol: 0
+    sort_no: 74
+    speed: 4000
+    topic: feetechHead
+    transmission: 1
+  SmileRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 1240
+    labelleft: SmileRight
+    max: 1.7027186745530618
+    min: 0.0
+    motor_id: 44
+    motor_max: 2350
+    motor_min: 1240
+    name: SmileRight
+    pau:
+      function:
+      - max: 1
+        min: 0
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: lips-smile.R
+    protocol: 0
+    sort_no: 75
+    speed: 4000
+    topic: feetechHead
+    transmission: 1
+  SneerLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 1900
+    labelleft: SneerLeft
+    max: 0.0
+    min: -0.9970875121256667
+    motor_id: 30
+    motor_max: 1900
+    motor_min: 1250
+    name: SneerLeft
+    pau:
+      function:
+      - max: 0
+        min: 1
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: sneer.R
+    protocol: 0
+    sort_no: 69
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  SneerRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2150
+    labelleft: SneerRight
+    max: 0.9970875121256667
+    min: 0.0
+    motor_id: 31
+    motor_max: 2800
+    motor_min: 2150
+    name: SneerRight
+    pau:
+      function:
+      - max: 1
+        min: 0
+        name: linear
+      parser:
+        name: fsshapekey
+        shapekey: sneer.R
+    protocol: 0
+    sort_no: 70
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  Tongue:
+    acceleration: 0.1
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 1900
+    labelleft: Tongue
+    max: 0.007669903939428206
+    min: -0.007669903939428206
+    motor_id: 28
+    motor_max: 1905
+    motor_min: 1895
+    name: Tongue
+    protocol: 0
+    sort_no: 80
+    speed: 0.3
+    topic: feetechHead
+    transmission: 1
+  UpperGimbalLeft:
+    acceleration: 160
+    assembly: grace9
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 1860
+    labelleft: UpperGimbalLeft
+    max: 0.9817477042468103
+    min: -0.32213596545598466
+    motor_id: 41
+    motor_max: 2500
+    motor_min: 1650
+    name: UpperGimbalLeft
+    pau:
+      function:
+      - axis: right
+        name: neckjoint
+        scale_pitch: 1.85
+        scale_roll: 2
+      parser:
+        name: getproperty
+        property: m_headRotation
+    protocol: 0
+    sort_no: 91
+    speed: 4000
+    topic: feetechHead
+    transmission: 1
+  UpperGimbalRight:
+    acceleration: 160
+    assembly: grace9
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 2225
+    labelleft: UpperGimbalRight
+    max: 0.2684466378799872
+    min: -1.0354370318228079
+    motor_id: 42
+    motor_max: 2400
+    motor_min: 1550
+    name: UpperGimbalRight
+    pau:
+      function:
+      - axis: left
+        name: neckjoint
+        scale_pitch: 1.85
+        scale_roll: 2
+      parser:
+        name: getproperty
+        property: m_headRotation
+    protocol: 0
+    sort_no: 92
+    speed: 4000
+    topic: feetechHead
+    transmission: 1
+  UpperLidLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2050
+    labelleft: UpperLidLeft
+    max: 0.23009711818284617
+    min: -0.6994952392758523
+    motor_id: 10
+    motor_max: 2200
+    motor_min: 1594
+    name: UpperLidLeft
+    pau:
+      function:
+      - imin: 0.7524752475247525
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: eye-blink.UP.L;eye-flare.UP.L
+    protocol: 0
+    sort_no: 31
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  UpperLidRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Eyes
+    hardware: feetech
+    init: 2050
+    labelleft: UpperLidRight
+    max: 0.8222137023067037
+    min: -0.23009711818284617
+    motor_id: 11
+    motor_max: 2586
+    motor_min: 1900
+    name: UpperLidRight
+    pau:
+      function:
+      - imin: 0.21865889212827988
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: eye-flare.UP.R;eye-blink.UP.R
+    protocol: 0
+    sort_no: 32
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  UpperLipCenter:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2300
+    labelleft: UpperLipCenter
+    max: 0.2454369260617026
+    min: -0.9970875121256667
+    motor_id: 21
+    motor_max: 2460
+    motor_min: 1650
+    name: UpperLipCenter
+    pau:
+      function:
+      - imin: 0.8024691358024691
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-UP.C.UP;lip-UP.C.DN
+    protocol: 0
+    sort_no: 62
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  UpperLipLeft:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 1845
+    labelleft: UpperLipLeft
+    max: 0.5445631796994026
+    min: -0.22242721424341796
+    motor_id: 20
+    motor_max: 2200
+    motor_min: 1700
+    name: UpperLipLeft
+    pau:
+      function:
+      - imin: 0.29
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-UP.L.DN;lip-UP.L.UP
+    protocol: 0
+    sort_no: 61
+    speed: 0
+    topic: feetechHead
+    transmission: 1
+  UpperLipRight:
+    acceleration: 255
+    assembly: grace9
+    default: 0
+    group: Lips
+    hardware: feetech
+    init: 2200
+    labelleft: UpperLipRight
+    max: 0.23009711818284617
+    min: -0.5368932757599744
+    motor_id: 22
+    motor_max: 2350
+    motor_min: 1850
+    name: UpperLipRight
+    pau:
+      function:
+      - imin: 0.7
+        name: weightedsum
+        terms:
+        - imax: 0
+          max: 1
+          min: 0
+        - imax: 1
+          max: 1
+          min: 0
+      parser:
+        name: fsshapekey
+        shapekey: lip-UP.R.UP;lip-UP.R.DN
+    protocol: 0
+    sort_no: 63
+    speed: 0
+    topic: feetechHead
+    transmission: 1

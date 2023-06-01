@@ -1,0 +1,836 @@
+motors:
+  Camera:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 2150
+    labelleft: Camera
+    max: 0.8436894333371027
+    min: -0.6902913545485385
+    motor_id: 53
+    motor_max: 2700
+    motor_min: 1700
+    name: Camera
+    protocol: 0
+    sort_no: 104
+    speed: 0
+    topic: feetechTorso
+    transmission: 1
+  LeftElbowPitch:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: LeftArm
+    hardware: feetech
+    init: 2040
+    labelleft: LeftElbowPitch
+    max: 2.2396119503130363
+    min: -2.055534255766759
+    motor_id: 83
+    motor_max: 3500
+    motor_min: 700
+    name: LeftElbowPitch
+    pau:
+      function:
+      - name: linear
+        scale: -0.0349
+        translate: 2.06
+      parser:
+        joint: L_Elbow
+        name: armsangles
+    protocol: 0
+    sort_no: -76
+    speed: 4000
+    topic: feetechLarm
+    transmission: 1
+  LeftElbowYaw:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: LeftArm
+    hardware: feetech
+    init: 510
+    labelleft: LeftElbowYaw
+    max: 0.521553467881118
+    min: -0.5522330836388308
+    motor_id: 84
+    motor_max: 850
+    motor_min: 150
+    name: LeftElbowYaw
+    pau:
+      function:
+      - name: linear
+        scale: 0.0157
+        translate: 0
+      parser:
+        joint: L_Wrist_Yaw
+        name: armsangles
+    protocol: 1
+    sort_no: -75
+    speed: 4000
+    topic: feetechLarm
+    transmission: 1
+  LeftIndexFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftIndexFinger
+    max: 2.1475731030398975
+    min: -0.30679615757712825
+    motor_id: 89
+    motor_max: 3450
+    motor_min: 1850
+    name: LeftIndexFinger
+    pau:
+      function:
+      - max: 40
+        min: -10
+        name: linear
+      parser:
+        joint: L_Index_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -65
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftMiddleFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftMiddleFinger
+    max: 2.3009711818284617
+    min: -0.30679615757712825
+    motor_id: 90
+    motor_max: 3550
+    motor_min: 1850
+    name: LeftMiddleFinger
+    pau:
+      function:
+      - max: -40
+        min: 10
+        name: linear
+      parser:
+        joint: L_Middle_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -64
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftPinkyFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftPinkyFinger
+    max: 1.303883669702795
+    min: -0.07669903939428206
+    motor_id: 92
+    motor_max: 2900
+    motor_min: 2000
+    name: LeftPinkyFinger
+    pau:
+      function:
+      - max: -40
+        min: 10
+        name: linear
+      parser:
+        joint: L_Pinky_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -62
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftRingFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftRingFinger
+    max: 2.377670221222744
+    min: -0.30679615757712825
+    motor_id: 91
+    motor_max: 3600
+    motor_min: 1850
+    name: LeftRingFinger
+    pau:
+      function:
+      - max: -40
+        min: 10
+        name: linear
+      parser:
+        joint: L_Ring_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -63
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftShoulderPitch:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: LeftArm
+    hardware: feetech
+    init: 2040
+    labelleft: LeftShoulderPitch
+    max: 2.5464081078901644
+    min: -0.5982525072754
+    motor_id: 80
+    motor_max: 3700
+    motor_min: 1650
+    name: LeftShoulderPitch
+    pau:
+      function:
+      - name: linear
+        scale: -0.0272
+        translate: 0
+      parser:
+        joint: L_Shoulder_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -79
+    speed: 1000
+    topic: feetechLarm
+    transmission: 1
+  LeftShoulderRoll:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: LeftArm
+    hardware: feetech
+    init: 2900
+    labelleft: LeftShoulderRoll
+    max: 0.0
+    min: -1.8407769454627694
+    motor_id: 81
+    motor_max: 2900
+    motor_min: 1700
+    name: LeftShoulderRoll
+    pau:
+      function:
+      - name: linear
+        scale: 0.0349
+        translate: 0
+      parser:
+        joint: L_Shoulder_Roll
+        name: armsangles
+    protocol: 0
+    sort_no: -78
+    speed: 1000
+    topic: feetechLarm
+    transmission: 1
+  LeftShoulderYaw:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: LeftArm
+    hardware: feetech
+    init: 2040
+    labelleft: LeftShoulderYaw
+    max: 1.1658253987930873
+    min: -1.4419419406125027
+    motor_id: 82
+    motor_max: 2800
+    motor_min: 1100
+    name: LeftShoulderYaw
+    pau:
+      function:
+      - name: linear
+        scale: -0.0504
+        translate: 0
+      parser:
+        joint: L_Shoulder_Yaw
+        name: armsangles
+    protocol: 0
+    sort_no: -77
+    speed: 4000
+    topic: feetechLarm
+    transmission: 1
+  LeftThumbFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftThumbFinger
+    max: 1.303883669702795
+    min: -0.7669903939428205
+    motor_id: 88
+    motor_max: 2900
+    motor_min: 1550
+    name: LeftThumbFinger
+    pau:
+      function:
+      - max: 40
+        min: -20
+        name: linear
+      parser:
+        joint: L_Thumb_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -67
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftThumbRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftThumbRoll
+    max: 0.38349519697141027
+    min: -0.5368932757599744
+    motor_id: 87
+    motor_max: 2300
+    motor_min: 1700
+    name: LeftThumbRoll
+    pau:
+      function:
+      - max: 20
+        min: -40
+        name: linear
+      parser:
+        joint: L_Thumb_Roll
+        name: armsangles
+    protocol: 0
+    sort_no: -68
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftWristPitch:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftWristPitch
+    max: 0.6135923151542565
+    min: -0.6135923151542565
+    motor_id: 85
+    motor_max: 2450
+    motor_min: 1650
+    name: LeftWristPitch
+    pau:
+      function:
+      - max: 40
+        min: -40
+        name: linear
+      parser:
+        joint: L_Wrist_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -70
+    speed: 50
+    topic: feetechLarm
+    transmission: 1
+  LeftWristRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftWristRoll
+    max: 0.6135923151542565
+    min: -0.6135923151542565
+    motor_id: 86
+    motor_max: 2450
+    motor_min: 1650
+    name: LeftWristRoll
+    pau:
+      function:
+      - max: -40
+        min: 40
+        name: linear
+      parser:
+        joint: L_Wrist_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -69
+    speed: 50
+    topic: feetechLarm
+    transmission: 1
+  LowerGimbalLeft:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 2130
+    labelleft: LowerGimbalLeft
+    max: 1.3345632854605078
+    min: -0.3528155812136975
+    motor_id: 51
+    motor_max: 3000
+    motor_min: 1900
+    name: LowerGimbalLeft
+    pau:
+      function:
+      - axis: loright
+        name: quaternion2dual
+      - name: linear
+        scale: -1
+        translate: 0
+      parser:
+        name: getproperty
+        property: m_neckRotation
+    protocol: 0
+    sort_no: 101
+    speed: 500
+    topic: feetechTorso
+    transmission: 1
+  LowerGimbalRight:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 2070
+    labelleft: LowerGimbalRight
+    max: 0.3528155812136975
+    min: -1.3345632854605078
+    motor_id: 52
+    motor_max: 2300
+    motor_min: 1200
+    name: LowerGimbalRight
+    pau:
+      function:
+      - axis: loleft
+        name: quaternion2dual
+      - name: linear
+        scale: -1
+        translate: 0
+      parser:
+        name: getproperty
+        property: m_neckRotation
+    protocol: 0
+    sort_no: 102
+    speed: 500
+    topic: feetechTorso
+    transmission: 1
+  NeckRotation:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: Neck
+    hardware: feetech
+    init: 2000
+    labelleft: NeckRotation
+    max: 0.6135923151542565
+    min: -0.6135923151542565
+    motor_id: 50
+    motor_max: 2400
+    motor_min: 1600
+    name: NeckRotation
+    pau:
+      function:
+      - axis: z
+        name: quaternion2euler
+      - name: linear
+        scale: 1
+        translate: 0
+      parser:
+        name: getproperty
+        property: m_headRotation
+    protocol: 0
+    sort_no: 103
+    speed: 0
+    topic: feetechTorso
+    transmission: 1
+  RightElbowPitch:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 2200
+    labelleft: RightElbowPitch
+    max: 2.0708740636456158
+    min: -2.1475731030398975
+    motor_id: 63
+    motor_max: 3550
+    motor_min: 800
+    name: RightElbowPitch
+    pau:
+      function:
+      - name: linear
+        scale: 0.0349
+        translate: -2.06
+      parser:
+        joint: R_Elbow
+        name: armsangles
+    protocol: 0
+    sort_no: -96
+    speed: 4000
+    topic: feetechRarm
+    transmission: 1
+  RightElbowYaw:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 495
+    labelleft: RightElbowYaw
+    max: 0.7439806821245359
+    min: -0.6826214506091103
+    motor_id: 64
+    motor_max: 980
+    motor_min: 50
+    name: RightElbowYaw
+    pau:
+      function:
+      - name: linear
+        scale: 0.0157
+        translate: 0
+      parser:
+        joint: R_Wrist_Yaw
+        name: armsangles
+    protocol: 1
+    sort_no: -95
+    speed: 4000
+    topic: feetechRarm
+    transmission: 1
+  RightFingerSpread:
+    acceleration: 1
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: pololu
+    init: 1057
+    labelleft: RightFingerSpread
+    max: 1.3880638681968325
+    min: -0.18273245859806403
+    motor_id: 59
+    motor_max: 1847
+    motor_min: 953
+    name: RightFingerSpread
+    pau:
+      function:
+      - max: 40
+        min: -8
+        name: linear
+      parser:
+        joint: R_Spreading
+        name: armsangles
+    protocol: 0
+    sort_no: -81
+    speed: 0
+    topic: rhand
+    transmission: 1
+  RightIndexFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 2900
+    labelleft: RightIndexFinger
+    max: 0.30679615757712825
+    min: -2.9145634969827183
+    motor_id: 69
+    motor_max: 3100
+    motor_min: 1000
+    name: RightIndexFinger
+    pau:
+      function:
+      - max: -10
+        min: 40
+        name: linear
+      parser:
+        joint: R_Index_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -85
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightMiddleFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 1550
+    labelleft: RightMiddleFinger
+    max: 2.9912625363770005
+    min: -0.6902913545485385
+    motor_id: 70
+    motor_max: 3500
+    motor_min: 1100
+    name: RightMiddleFinger
+    pau:
+      function:
+      - max: -40
+        min: 10
+        name: linear
+      parser:
+        joint: R_Middle_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -84
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightPinkyFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 2040
+    labelleft: RightPinkyFinger
+    max: 0.3988350048502667
+    min: -1.748738098189631
+    motor_id: 72
+    motor_max: 2300
+    motor_min: 900
+    name: RightPinkyFinger
+    pau:
+      function:
+      - max: 10
+        min: -40
+        name: linear
+      parser:
+        joint: R_Pinky_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -82
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightRingFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 1600
+    labelleft: RightRingFinger
+    max: 3.067961575771282
+    min: -0.46019423636569234
+    motor_id: 71
+    motor_max: 3600
+    motor_min: 1300
+    name: RightRingFinger
+    pau:
+      function:
+      - max: -40
+        min: 10
+        name: linear
+      parser:
+        joint: R_Ring_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -83
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightShoulderPitch:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 2040
+    labelleft: RightShoulderPitch
+    max: 0.6289321230331129
+    min: -2.5157284921324514
+    motor_id: 60
+    motor_max: 2450
+    motor_min: 400
+    name: RightShoulderPitch
+    pau:
+      function:
+      - name: linear
+        scale: 0.0272
+        translate: 0
+      parser:
+        joint: R_Shoulder_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -99
+    speed: 1000
+    topic: feetechRarm
+    transmission: 1
+  RightShoulderRoll:
+    acceleration: 100
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 1200
+    labelleft: RightShoulderRoll
+    max: 1.8407769454627694
+    min: 0.0
+    motor_id: 61
+    motor_max: 2400
+    motor_min: 1200
+    name: RightShoulderRoll
+    pau:
+      function:
+      - name: linear
+        scale: 0.0349
+        translate: 0
+      parser:
+        joint: R_Shoulder_Roll
+        name: armsangles
+    protocol: 0
+    sort_no: -98
+    speed: 1000
+    topic: feetechRarm
+    transmission: 1
+  RightShoulderYaw:
+    acceleration: 200
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 1700
+    labelleft: RightShoulderYaw
+    max: 2.60776733940559
+    min: -1.6873788666742053
+    motor_id: 62
+    motor_max: 3400
+    motor_min: 600
+    name: RightShoulderYaw
+    pau:
+      function:
+      - name: linear
+        scale: -0.0504
+        translate: 0
+      parser:
+        joint: R_Shoulder_Yaw
+        name: armsangles
+    protocol: 0
+    sort_no: -97
+    speed: 4000
+    topic: feetechRarm
+    transmission: 1
+  RightThumbFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 2450
+    labelleft: RightThumbFinger
+    max: 0.38349519697141027
+    min: -2.2242721424341796
+    motor_id: 68
+    motor_max: 2700
+    motor_min: 1000
+    name: RightThumbFinger
+    pau:
+      function:
+      - max: -20
+        min: 40
+        name: linear
+      parser:
+        joint: R_Thumb_Finger
+        name: armsangles
+    protocol: 0
+    sort_no: -87
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightThumbRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightHand
+    hardware: feetech
+    init: 2460
+    labelleft: RightThumbRoll
+    max: 0.5982525072754
+    min: -0.705631162427395
+    motor_id: 67
+    motor_max: 2850
+    motor_min: 2000
+    name: RightThumbRoll
+    pau:
+      function:
+      - max: -20
+        min: 40
+        name: linear
+      parser:
+        joint: R_Thumb_Roll
+        name: armsangles
+    protocol: 0
+    sort_no: -88
+    speed: 0
+    topic: feetechRarm
+    transmission: 1
+  RightWristPitch:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 2042
+    labelleft: RightWristPitch
+    max: 0.6258641614573416
+    min: -0.6013204688511713
+    motor_id: 65
+    motor_max: 2450
+    motor_min: 1650
+    name: RightWristPitch
+    pau:
+      function:
+      - max: 40
+        min: -40
+        name: linear
+      parser:
+        joint: R_Wrist_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -90
+    speed: 50
+    topic: feetechRarm
+    transmission: 1
+  RightWristRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: RightArm
+    hardware: feetech
+    init: 2042
+    labelleft: RightWristRoll
+    max: 0.6258641614573416
+    min: -0.6013204688511713
+    motor_id: 66
+    motor_max: 2450
+    motor_min: 1650
+    name: RightWristRoll
+    pau:
+      function:
+      - max: -40
+        min: 40
+        name: linear
+      parser:
+        joint: R_Wrist_Pitch
+        name: armsangles
+    protocol: 0
+    sort_no: -89
+    speed: 255
+    topic: feetechRarm
+    transmission: 1
