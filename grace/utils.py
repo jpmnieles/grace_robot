@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import time
 import yaml
 import rospy
@@ -10,7 +11,8 @@ from rospy_message_converter import message_converter
 class ROSMotorClient(object):
     
 
-    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"]):
+    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+        self.degrees = degrees
         rospy.init_node('hr_motor_client')
         self.set_motor_names(motors)
         self._motor_state = [None]*self.num_names
@@ -45,6 +47,8 @@ class ROSMotorClient(object):
         return self._motor_state
 
     def move(self, values):
+        if self.degrees:
+            values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
         self.publisher.publish(TargetPosture(**args))
 
@@ -73,7 +77,7 @@ motors_dict.update(body_dict['motors'])
 if __name__ == '__main__':
 
     # Instantiation
-    client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"])
+    client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True)
 
     # State
     start = time.time()
@@ -85,6 +89,7 @@ if __name__ == '__main__':
     values = eval(input("Enter the motor commands in list:"))
     start = time.time()
     client.move(values)
+    time.sleep(0.75)
     end = time.time()
     print("Move Command Elapsed Time:", end-start)
 
