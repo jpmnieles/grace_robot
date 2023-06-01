@@ -41,8 +41,26 @@ class ROSMotorClient(object):
 
 
 if __name__ == '__main__':
+
+    # Instantiation
     client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"])
+
+    # State
     start = time.time()
     print(client.state)
     end = time.time()
-    print("Elapsed Time:", end-start)
+    print("State Elapsed Time:", end-start)
+
+    # Move
+    values = eval(input("Enter the motor commands in list:"))
+    start = time.time()
+    client.move(values)
+    end = time.time()
+    print("Move Command Elapsed Time:", end-start)
+
+    # State
+    start = time.time()
+    print(client.state)
+    end = time.time()
+    print("State Elapsed Time:", end-start)
+
