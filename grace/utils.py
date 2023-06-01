@@ -1,6 +1,16 @@
 import os
 import sys
 import yaml
+import math
+
+
+def motor_int_to_angle(motor, position, degrees):
+    if degrees:
+        unit = 360
+    else:
+        unit = math.pi
+    angle = ((position-motors_dict[motor]['init'])/4096)*unit
+    return angle
 
 
 # Loading Motors Yaml File

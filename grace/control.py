@@ -9,7 +9,7 @@ import rospy
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
 
-from grace.utils import motors_dict
+from grace.utils import *
 
 
 class ROSMotorClient(object):
@@ -41,7 +41,7 @@ class ROSMotorClient(object):
             unit = 360
         else:
             unit = math.pi
-        angle = ((position-self._motor_limits[motor]['init'])/4096)*unit
+        angle = ((position-self._motor_limits[motor]['int_init'])/4096)*unit
         return angle
 
     def _convert_to_motor_int(self, motor, angle):
@@ -49,14 +49,22 @@ class ROSMotorClient(object):
             unit = 360
         else:
             unit = math.pi
-        angle = round((angle/unit)*4096 + self._motor_limits[motor]['init'])
+        angle = round((angle/unit)*4096 + self._motor_limits[motor]['int_init'])
         return angle
         
     def _capture_limits(self, motor):
-        min = motors_dict[motor]['motor_min']
-        init = motors_dict[motor]['init']
-        max = motors_dict[motor]['motor_max']
-        limits = {'min': min, 'init': init, 'max': max}
+        int_min = motors_dict[motor]['motor_min']
+        int_init = motors_dict[motor]['init']
+        int_max = motors_dict[motor]['motor_max']
+        deg_min = motor_int_to_angle(motor, int_min, self.degrees)
+        deg_init = motor_int_to_angle(motor, int_init, self.degrees)
+        deg_max = motor_int_to_angle(motor, int_max, self.degrees)
+        limits = {'int_min': int_min, 
+                  'int_init': int_init, 
+                  'int_max': int_max,
+                  'deg_min': deg_min, 
+                  'deg_init': deg_init, 
+                  'deg_max': deg_max}
         return limits
 
     def set_motor_names(self, names: list):
@@ -83,7 +91,15 @@ class ROSMotorClient(object):
         args = {"names":self.names, "values":values}
         self.publisher.publish(TargetPosture(**args))
 
+    def _check_limits(self, name, value):
+        if value < self._motor_limits[name]['deg_min']:
+            value = self._motor_limits[name]['deg_min']
+        elif value > self._motor_limits[name]['deg_max']:
+            value = self._motor_limits[name]['deg_max']
+        return value     
+
     def move(self, values):
+        values = [self._check_limits(self.names[i],x) for i,x in enumerate(values)]
         targets = [self._convert_to_motor_int(self.names[i],x) for i,x in enumerate(values)]
         if self.degrees:
             values = [math.radians(x) for x in values]
@@ -103,7 +119,7 @@ class ROSMotorClient(object):
             position = self._motor_state[i]["position"] 
             confirmed |= position > (targets[i]+1) or position  < (targets[i]-1)
             if self.debug:
-                print('[DEBUG] position:', position, 'target:', targets[i], 'confirmed:',confirmed)
+                print('[DEBUG] name:', self.names[i], 'position:', position, 'target:', targets[i], 'confirmed:',confirmed)
         return confirmed
     
     def get_elapsed_time(self, start_state, end_state):
