@@ -3,6 +3,8 @@ import sys
 import math
 import time
 import yaml
+from datetime import datetime
+
 import rospy
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
@@ -73,7 +75,6 @@ class ROSMotorClient(object):
         self.publisher.publish(TargetPosture(**args))
 
     def move(self, values):
-        init_state = self.state
         targets = [self._convert_to_motor_int(self.names[i],x) for i,x in enumerate(values)]
         if self.degrees:
             values = [math.radians(x) for x in values]
@@ -95,6 +96,13 @@ class ROSMotorClient(object):
             if self.debug:
                 print('[DEBUG] position:', position, 'target:', targets[i], 'confirmed:',confirmed)
         return confirmed
+    
+    def get_elapsed_time(self, start_state, end_state):
+        start_timestamp = start_state[0]["timestamp"]
+        end_timestamp = end_state[-1]["timestamp"]
+        elapsed_time = (datetime.fromtimestamp(end_timestamp) 
+                        - datetime.fromtimestamp(start_timestamp)).total_seconds()
+        return elapsed_time
 
     def exit(self):
         rospy.signal_shutdown('End of Node')
@@ -125,14 +133,15 @@ if __name__ == '__main__':
 
     # State
     start = time.time()
-    print(client.state)
+    state = client.state
     end = time.time()
-    print("State Elapsed Time:", end-start)
+    print(state)
+    print(f"State Elapsed Time: {end-start:.8f} sec")
 
     # Move with Target
     values = eval(input("Enter the motor commands in list:"))
-    start = time.time()
-    state = client.move(values)
-    end = time.time()
-    print("Move Command Elapsed Time:", end-start)
-    print(state)
+    start_state = client.state
+    end_state = client.move(values)
+    elapsed_time = client.get_elapsed_time(start_state, end_state)
+    print(f"Move Elapsed Time: {elapsed_time:.8f} sec")
+    print(end_state)
