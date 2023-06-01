@@ -29,6 +29,15 @@ class ROSMotorClient(object):
             for i, name in enumerate(self.names):
                 if x.name == name:
                     self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
+                    self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
+    
+    def _convert_to_angle(self, actuator, position):
+        if self.degrees:
+            unit = 360
+        else:
+            unit = math.pi
+        angle = ((position-self._motor_limits[actuator]['init'])/4096)*unit
+        return angle              
 
     def _capture_limits(self, motor):
         min = motors_dict[motor]['motor_min']
@@ -89,7 +98,7 @@ if __name__ == '__main__':
     values = eval(input("Enter the motor commands in list:"))
     start = time.time()
     client.move(values)
-    time.sleep(0.75)
+    time.sleep(1)
     end = time.time()
     print("Move Command Elapsed Time:", end-start)
 
