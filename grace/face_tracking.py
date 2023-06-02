@@ -10,6 +10,7 @@ import dlib
 import cv2
 
 from grace.control import ROSMotorClient
+from aec.baseline import PanBacklash, TiltPolicy
 
 import rospy
 from sensor_msgs.msg import Image
@@ -73,10 +74,13 @@ def display_target(delta_x, delta_y, img):
     return disp_img
 
 
-def main(enabled_logging=True):
+def main(enable_logging=True, enable_baseline_policy=True):
 
     # Instantiation
     grace = ROSMotorClient(["EyeTurnLeft", "EyesUpDown"], degrees=True, debug=False)
+    if enable_baseline_policy:
+        pan_backlash = PanBacklash()
+        tilt_policy = TiltPolicy()
     rate = rospy.Rate(30) # 30 Hz
     logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
    
@@ -137,8 +141,12 @@ def main(enabled_logging=True):
             img = ctr_cross_img(img)
 
             # Command Robot
-            cmd_p = theta_p + px_to_deg_fx(delta_x)/1.6328
-            cmd_t = theta_t + px_to_deg_fy(delta_y)/0.3910
+            if enable_baseline_policy:
+                cmd_p, pos_p = pan_backlash.calc_cmd(delta_x, theta_p)
+                cmd_t, pos_t = tilt_policy.calc_cmd(delta_y, theta_t)
+            else:
+                cmd_p = theta_p + px_to_deg_fx(delta_x)/1.6328
+                cmd_t = theta_t + px_to_deg_fy(delta_y)/0.3910
             
             start_state = grace.state
             end_state = grace.move([cmd_p, cmd_t])
@@ -148,7 +156,7 @@ def main(enabled_logging=True):
             theta_t = end_state[1]['angle']
 
             # Logging
-            if enabled_logging:
+            if enable_logging:
                 logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
                 logger['timestamp'].append(start_state[0]["timestamp"])
                 logger['theta_p'].append(theta_p)
@@ -166,8 +174,11 @@ def main(enabled_logging=True):
         key = cv2.waitKey(1)
 
         if key == 27:  # Esc
-            if enabled_logging:
-                filename = datetime.now().strftime("%d%m%Y_%H%M%S") + ".csv"
+            if enable_logging:
+                if enable_baseline_policy:
+                    filename = datetime.now().strftime("%d%m%Y_%H%M%S") + "_baseline_policy" + ".csv"
+                else:
+                    filename = datetime.now().strftime("%d%m%Y_%H%M%S") + ".csv"
                 df = pd.DataFrame(logger)
                 df.to_csv(filename)
             break
