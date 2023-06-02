@@ -1,6 +1,7 @@
 import os
 import math
 import time
+import pandas as pd
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
@@ -164,6 +165,9 @@ def main(enabled_logging=True):
         key = cv2.waitKey(1)
 
         if key == 27:  # Esc
+            filename = datetime.now().strftime("%d%m%Y_%H%M%S") + ".csv"
+            df = pd.DataFrame(logger)
+            df.to_csv(filename)
             break
         rate.sleep()
 
