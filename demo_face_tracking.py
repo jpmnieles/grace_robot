@@ -109,7 +109,7 @@ class VisualizeSaccade(object):
             delta_y =  219.22972847 - y_target
 
             img = self._display_target(delta_x, delta_y, img)
-            img = cv2.putText(img, f'delta_x={delta_x:.4f} (px), delta_y={delta_y:.4f} (px)', (170,470), cv2.FONT_HERSHEY_SIMPLEX,
+            img = cv2.putText(img, f'delta_x={delta_x:.4f} (px), delta_y={delta_y:.4f} (px)', (150,470), cv2.FONT_HERSHEY_SIMPLEX,
                    fontScale=0.5, color=(0,255,0), thickness=1)
             
             if self.bool_crop:
