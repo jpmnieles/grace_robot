@@ -72,11 +72,12 @@ def display_target(delta_x, delta_y, img):
     return disp_img
 
 
-def main():
+def main(enabled_logging=True):
 
     # Instantiation
     grace = ROSMotorClient(["EyeTurnLeft", "EyesUpDown"], degrees=True, debug=False)
     rate = rospy.Rate(30) # 30 Hz
+    logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
    
     # Load the pre-trained face detection and landmark detection models
     detector = dlib.get_frontal_face_detector()
@@ -89,6 +90,9 @@ def main():
     grace_state = grace.state
     theta_p = grace_state[0]['angle']
     theta_t = grace_state[1]['angle']
+
+    # Initial Log
+    print(f"[{datetime.timestamp(datetime.now())}] Running")
 
     while (1):
 
@@ -134,9 +138,7 @@ def main():
             # Command Robot
             cmd_p = theta_p + px_to_deg_fx(delta_x)/1.6328
             cmd_t = theta_t + px_to_deg_fy(delta_y)/0.3910
-            print('theta_p:', theta_p, 'delta_x', delta_x, 'cmd_p:', cmd_p)
-
-
+            
             start_state = grace.state
             end_state = grace.move([cmd_p, cmd_t])
             elapsed_time = grace.get_elapsed_time(start_state, end_state)
@@ -144,16 +146,26 @@ def main():
             theta_p = end_state[0]['angle']
             theta_t = end_state[1]['angle']
 
+            # Logging
+            logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
+            logger['timestamp'].append(start_state[0]["timestamp"])
+            logger['theta_p'].append(theta_p)
+            logger['theta_t'].append(theta_t)
+            logger['delta_x'].append(delta_x)
+            logger['delta_y'].append(delta_y)
+            logger['cmd_p'].append(cmd_p)
+            logger['cmd_t'].append(cmd_t)
+            logger['elapsed_time'].append(elapsed_time)
+            print('[timestamp]', start_state[0]["timestamp"],'theta_p:', theta_p, 'theta_t:', theta_t,
+                  'delta_x:', delta_x, 'delta_y:', delta_y,'cmd_p:', cmd_p,'cmd_t:', cmd_t, 'elapsed_time:',elapsed_time)
+
         # Display the output image
         # cv2.imshow('Output', img)
-        # key = cv2.waitKey(30)
+        key = cv2.waitKey(1)
 
-        # if key == 27:  # Esc
-        #     break
-        print(f"[{datetime.timestamp(datetime.now())}] Running")
+        if key == 27:  # Esc
+            break
         rate.sleep()
 
-    cv2.destroyAllWindows()
-
 if __name__ == "__main__":
-    main()
+    main(enabled_logging=True)
