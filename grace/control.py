@@ -8,6 +8,8 @@ from datetime import datetime
 import rospy
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
 
 from grace.utils import *
 
@@ -21,10 +23,25 @@ class ROSMotorClient(object):
         rospy.init_node('hr_motor_client')
         self.set_motor_names(motors)
         self._motor_state = [None]*self.num_names
-        self.subscriber = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
-        self.publisher = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=10)
+        self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
+        self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=10)
+        self.bridge = CvBridge()
+        self.left_eye_sub = rospy.Subscriber('/eye_camera/left_eye/image_raw', Image, self._capture_left_image)
+        self.right_eye_sub = rospy.Subscriber('/eye_camera/right_eye/image_raw', Image, self._capture_right_image)
         time.sleep(1)
         self.state
+
+    def _capture_left_image(self, msg):
+        try:
+            self.left_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as error:
+            print(error)
+    
+    def _capture_right_image(self, msg):
+        try:
+            self.right_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as error:
+            print(error)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -89,7 +106,7 @@ class ROSMotorClient(object):
         if self.degrees:
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
-        self.publisher.publish(TargetPosture(**args))
+        self.motor_pub.publish(TargetPosture(**args))
 
     def _check_limits(self, name, value):
         if value < self._motor_limits[name]['deg_min']:
@@ -104,7 +121,7 @@ class ROSMotorClient(object):
         if self.degrees:
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
-        self.publisher.publish(TargetPosture(**args))
+        self.motor_pub.publish(TargetPosture(**args))
         while self._check_target(targets):
             time.sleep(0.02)
             if self.debug:
