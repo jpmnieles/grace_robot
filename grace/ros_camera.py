@@ -10,7 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 class EyeCamSubscriber(object):
     
 
-    def __init__(self, show_image=False):
+    def __init__(self, show_image=True):
         rospy.init_node("eye_camera_subscriber")
         self.set_show_image(show_image)
         self.bridge = CvBridge()
