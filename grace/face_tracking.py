@@ -148,26 +148,28 @@ def main(enabled_logging=True):
             theta_t = end_state[1]['angle']
 
             # Logging
-            logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
-            logger['timestamp'].append(start_state[0]["timestamp"])
-            logger['theta_p'].append(theta_p)
-            logger['theta_t'].append(theta_t)
-            logger['delta_x'].append(delta_x)
-            logger['delta_y'].append(delta_y)
-            logger['cmd_p'].append(cmd_p)
-            logger['cmd_t'].append(cmd_t)
-            logger['elapsed_time'].append(elapsed_time)
+            if enabled_logging:
+                logger = {'timestamp':[], 'theta_p': [], 'theta_t':[], 'delta_x':[], 'delta_y':[], 'cmd_p':[], 'cmd_t':[], 'elapsed_time':[]}
+                logger['timestamp'].append(start_state[0]["timestamp"])
+                logger['theta_p'].append(theta_p)
+                logger['theta_t'].append(theta_t)
+                logger['delta_x'].append(delta_x)
+                logger['delta_y'].append(delta_y)
+                logger['cmd_p'].append(cmd_p)
+                logger['cmd_t'].append(cmd_t)
+                logger['elapsed_time'].append(elapsed_time)
             print('[timestamp]', start_state[0]["timestamp"],'theta_p:', theta_p, 'theta_t:', theta_t,
-                  'delta_x:', delta_x, 'delta_y:', delta_y,'cmd_p:', cmd_p,'cmd_t:', cmd_t, 'elapsed_time:',elapsed_time)
+                'delta_x:', delta_x, 'delta_y:', delta_y,'cmd_p:', cmd_p,'cmd_t:', cmd_t, 'elapsed_time:',elapsed_time)
 
         # Display the output image
         # cv2.imshow('Output', img)
         key = cv2.waitKey(1)
 
         if key == 27:  # Esc
-            filename = datetime.now().strftime("%d%m%Y_%H%M%S") + ".csv"
-            df = pd.DataFrame(logger)
-            df.to_csv(filename)
+            if enabled_logging:
+                filename = datetime.now().strftime("%d%m%Y_%H%M%S") + ".csv"
+                df = pd.DataFrame(logger)
+                df.to_csv(filename)
             break
         rate.sleep()
 
