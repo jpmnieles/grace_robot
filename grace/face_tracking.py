@@ -185,4 +185,4 @@ def main(enable_logging=True, enable_baseline_policy=True):
         rate.sleep()
 
 if __name__ == "__main__":
-    main(enabled_logging=True)
+    main(enable_logging=True, enable_baseline_policy=True)
