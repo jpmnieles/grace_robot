@@ -91,7 +91,7 @@ class ROSMotorClient(object):
 
     @property
     def state(self):
-        return self._motor_state
+        return self._motor_state.copy()
     
     @property
     def angle_state(self):
@@ -127,23 +127,23 @@ class ROSMotorClient(object):
             if self.debug:
                 print("[DEBUG] Target not yet reached")
             pass
-        final_state = self.state
+        final_state = self._motor_state
         return final_state
     
     def _check_target(self, targets):
         confirmed = False
         for i in range(self.num_names):
+            timestamp = self._motor_state[i]["timestamp"] 
             position = self._motor_state[i]["position"] 
             confirmed |= position > (targets[i]+1) or position  < (targets[i]-1)
             if self.debug:
-                print('[DEBUG] name:', self.names[i], 'position:', position, 'target:', targets[i], 'confirmed:',confirmed)
+                print('[DEBUG] timestamp:', timestamp, 'name:', self.names[i], 'position:', position, 'target:', targets[i], 'confirmed:',confirmed)
         return confirmed
     
     def get_elapsed_time(self, start_state, end_state):
         start_timestamp = start_state[0]["timestamp"]
-        end_timestamp = end_state[-1]["timestamp"]
-        elapsed_time = (datetime.fromtimestamp(end_timestamp) 
-                        - datetime.fromtimestamp(start_timestamp)).total_seconds()
+        end_timestamp = end_state[0]["timestamp"]
+        elapsed_time = (datetime.fromtimestamp(end_timestamp)-datetime.fromtimestamp(start_timestamp)).total_seconds()
         return elapsed_time
 
     def exit(self):
