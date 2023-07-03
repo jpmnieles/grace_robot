@@ -232,7 +232,7 @@ motors:
     max: 0.21015536794033285
     min: -0.19941750242513334
     motor_id: 14
-    motor_max: 2117
+    motor_max: 2250
     motor_min: 1850
     name: EyeTurnLeft
     pau:
