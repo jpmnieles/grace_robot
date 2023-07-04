@@ -24,9 +24,9 @@ def get_chessboard_points(img):
     return s_corners
 
 
-def get_center_chessboard_point(img):
+def get_chessboard_point(img, idx):
     corners = get_chessboard_points(img)
-    return corners[21].tolist()
+    return corners[idx].tolist()
 
 
 # Loading Motors Yaml File
