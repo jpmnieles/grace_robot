@@ -57,6 +57,7 @@ class Feetech(object):
 
     def _capture_limits(self, motor_id):
         motor = self._capture_motor_name(motor_id)
+        self.motor_name = motor
 
         int_min = motors_dict[motor]['motor_min']
         int_init = motors_dict[motor]['init']
@@ -132,7 +133,7 @@ class Feetech(object):
 
 
 if __name__ == "__main__":
-    left_pan = Feetech(motor_id=14)
+    left_pan = Feetech(motor_id=15)
     
     while(1):
         input_str = input("Enter Position: ")
