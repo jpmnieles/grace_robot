@@ -29,6 +29,12 @@ def get_chessboard_point(img, idx):
     return corners[idx].tolist()
 
 
+def capture_motor_name(motor_id):
+    for name in motors_dict.keys():
+        if motors_dict[name]["motor_id"] == motor_id:
+            return name
+
+
 # Loading Motors Yaml File
 with open(os.path.join(os.getcwd(),'config', 'head','motors.yaml'), 'r') as stream:
     try:
