@@ -133,7 +133,7 @@ class Feetech(object):
 
 
 if __name__ == "__main__":
-    left_pan = Feetech(motor_id=15)
+    left_pan = Feetech(motor_id=14)
     
     while(1):
         input_str = input("Enter Position: ")

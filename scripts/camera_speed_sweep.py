@@ -15,17 +15,6 @@ from grace.utils import *
 from datetime import datetime
 
 
-def save_pickle_data(data, filename: str):
-    # Making Directory
-    
-
-    # Saving to Pickle File
-    with open(filepath + ".pickle", 'wb') as file:
-        pickle.dump(data, file)
-    print('Data saved in:', filepath + ".pickle")
-    return filepath + ".pickle"
-
-
 class EyeCamSpeedSweep(object):
     
 
@@ -95,5 +84,5 @@ class EyeCamSpeedSweep(object):
     
 
 if __name__ == '__main__':
-    eye_cam_speed_sweep = EyeCamSpeedSweep(camera='right', show_image=True)
-    eye_cam_speed_sweep.main(motor_id=15, max_amplitude=22, trials=5)
+    eye_cam_speed_sweep = EyeCamSpeedSweep(camera='left', show_image=True)
+    eye_cam_speed_sweep.main(motor_id=14, max_amplitude=22, trials=5)

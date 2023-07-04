@@ -45,7 +45,9 @@ def main(motor_id, max_amplitude, trials):
     dt_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
     driver = Feetech(motor_id)
-    if motor_id == 15:
+    if motor_id == 14:
+        motor_max = 2111
+    elif motor_id == 15:
         motor_max = 2190
     else:
         motor_max = driver._motor_limits['int_max']
@@ -106,4 +108,4 @@ def main(motor_id, max_amplitude, trials):
 
 
 if __name__ == "__main__":
-    main(motor_id=15, max_amplitude=22, trials=5)
+    main(motor_id=14, max_amplitude=22, trials=5)
