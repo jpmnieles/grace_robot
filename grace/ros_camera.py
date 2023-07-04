@@ -45,4 +45,4 @@ class EyeCamSubscriber(object):
     
 
 if __name__ == '__main__':
-    eye_cam = EyeCamSubscriber()
+    eye_cam = EyeCamSubscriber(show_image=True)
