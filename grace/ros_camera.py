@@ -14,8 +14,8 @@ class EyeCamSubscriber(object):
         rospy.init_node("eye_camera_subscriber")
         self.set_show_image(show_image)
         self.bridge = CvBridge()
-        self.left_eye_sub = rospy.Subscriber('/eye_camera/left_eye/image_raw', Image, self._capture_left_image)
-        self.right_eye_sub = rospy.Subscriber('/eye_camera/right_eye/image_raw', Image, self._capture_right_image)
+        self.left_eye_sub = rospy.Subscriber('/left_eye/image_raw', Image, self._capture_left_image)
+        self.right_eye_sub = rospy.Subscriber('/right_eye/image_raw', Image, self._capture_right_image)
         time.sleep(1)
         self.main()
 
