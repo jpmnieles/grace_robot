@@ -134,6 +134,42 @@ class Feetech(object):
         present_speed = SCS_HIWORD(scs_present_position_speed)
         return present_position, present_speed, ts
 
+    def set_p_gain(self, int_p_gain):
+        start_ts = datetime.timestamp(datetime.now())
+        scs_comm_result, scs_error = self.PacketHandler.write2ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["P_GAIN"], int_p_gain)
+        if scs_comm_result != COMM_SUCCESS:
+            print("%s" % self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print("%s" % self.PacketHandler.getRxPacketError(scs_error))
+        end_ts = datetime.timestamp(datetime.now())
+        elapsed_time = (datetime.fromtimestamp(end_ts) - datetime.fromtimestamp(start_ts)).total_seconds()
+        return start_ts, end_ts, elapsed_time
+    
+    def set_i_gain(self, int_i_gain):
+        start_ts = datetime.timestamp(datetime.now())
+        scs_comm_result, scs_error = self.PacketHandler.write1ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["I_GAIN"], int_i_gain)
+        if scs_comm_result != COMM_SUCCESS:
+            print("%s" % self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print("%s" % self.PacketHandler.getRxPacketError(scs_error))
+        end_ts = datetime.timestamp(datetime.now())
+        elapsed_time = (datetime.fromtimestamp(end_ts) - datetime.fromtimestamp(start_ts)).total_seconds()
+        return start_ts, end_ts, elapsed_time
+    
+    def set_d_gain(self, int_d_gain):
+        start_ts = datetime.timestamp(datetime.now())
+        scs_comm_result, scs_error = self.PacketHandler.write1ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["D_GAIN"], int_d_gain)
+        if scs_comm_result != COMM_SUCCESS:
+            print("%s" % self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print("%s" % self.PacketHandler.getRxPacketError(scs_error))
+        end_ts = datetime.timestamp(datetime.now())
+        elapsed_time = (datetime.fromtimestamp(end_ts) - datetime.fromtimestamp(start_ts)).total_seconds()
+        return start_ts, end_ts, elapsed_time
+
     def get_p_gain(self):
         p_gain, scs_comm_result, scs_error = self.PacketHandler.read1ByteTxRx(
             self.PortHandler, self.motor_id, self.REG_ADDR["P_GAIN"])
@@ -170,6 +206,25 @@ class Feetech(object):
 if __name__ == "__main__":
     left_pan = Feetech(motor_id=15)
 
+    # First Read
+    print("==First Read==")
+    p_gain, p_ts = left_pan.get_p_gain()
+    i_gain, i_ts = left_pan.get_i_gain()
+    d_gain, d_ts = left_pan.get_d_gain()
+    print("[%.6f] P Gain: %i" % (p_ts, p_gain))
+    print("[%.6f] I Gain: %i" % (i_ts, i_gain))
+    print("[%.6f] D Gain: %i" % (d_ts, d_gain))
+
+    # Setting of PID Values
+    int_p_gain = eval(input("Enter P Gain: "))
+    p_ts,_,_ = left_pan.set_p_gain(int_p_gain)
+    int_i_gain = eval(input("Enter I Gain: "))
+    i_ts,_,_ = left_pan.set_i_gain(int_i_gain)
+    int_d_gain = eval(input("Enter D Gain: "))
+    d_ts,_,_ = left_pan.set_d_gain(int_d_gain)
+
+    # Second Read
+    print("==Second Read==")
     p_gain, p_ts = left_pan.get_p_gain()
     i_gain, i_ts = left_pan.get_i_gain()
     d_gain, d_ts = left_pan.get_d_gain()
