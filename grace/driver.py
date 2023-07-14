@@ -15,6 +15,9 @@ class Feetech(object):
         "GOAL_POSITION": 42,
         "GOAL_SPEED": 46,
         "PRESENT_POSITION": 56,
+        "P_GAIN": 21,
+        "D_GAIN": 22,
+        "I_GAIN": 23,
     }
 
 
@@ -131,10 +134,49 @@ class Feetech(object):
         present_speed = SCS_HIWORD(scs_present_position_speed)
         return present_position, present_speed, ts
 
+    def get_p_gain(self):
+        p_gain, scs_comm_result, scs_error = self.PacketHandler.read1ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["P_GAIN"])
+        if scs_comm_result != COMM_SUCCESS:
+            print(self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print(self.PacketHandler.getRxPacketError(scs_error))
+        
+        ts = datetime.timestamp(datetime.now())
+        return p_gain, ts
+    
+    def get_i_gain(self):
+        i_gain, scs_comm_result, scs_error = self.PacketHandler.read1ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["I_GAIN"])
+        if scs_comm_result != COMM_SUCCESS:
+            print(self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print(self.PacketHandler.getRxPacketError(scs_error))
+        
+        ts = datetime.timestamp(datetime.now())
+        return i_gain, ts
+    
+    def get_d_gain(self):
+        d_gain, scs_comm_result, scs_error = self.PacketHandler.read1ByteTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["D_GAIN"])
+        if scs_comm_result != COMM_SUCCESS:
+            print(self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print(self.PacketHandler.getRxPacketError(scs_error))
+        
+        ts = datetime.timestamp(datetime.now())
+        return d_gain, ts
 
 if __name__ == "__main__":
-    left_pan = Feetech(motor_id=14)
-    
+    left_pan = Feetech(motor_id=15)
+
+    p_gain, p_ts = left_pan.get_p_gain()
+    i_gain, i_ts = left_pan.get_i_gain()
+    d_gain, d_ts = left_pan.get_d_gain()
+    print("[%.6f] P Gain: %i" % (p_ts, p_gain))
+    print("[%.6f] I Gain: %i" % (i_ts, i_gain))
+    print("[%.6f] D Gain: %i" % (d_ts, d_gain))
+
     while(1):
         input_str = input("Enter Position: ")
         if input_str == 'q':  # Press Q to exit
