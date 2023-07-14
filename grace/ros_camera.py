@@ -1,6 +1,7 @@
 import time
 import cv2
 import numpy as np
+from datetime import datetime
 
 import rospy
 from sensor_msgs.msg import Image
@@ -14,20 +15,22 @@ class EyeCamSubscriber(object):
         rospy.init_node("eye_camera_subscriber")
         self.set_show_image(show_image)
         self.bridge = CvBridge()
-        self.left_eye_sub = rospy.Subscriber('/left_eye/image_raw', Image, self._capture_left_image)
-        self.right_eye_sub = rospy.Subscriber('/right_eye/image_raw', Image, self._capture_right_image)
+        self.left_eye_sub = rospy.Subscriber('/left_eye/image_raw', Image, self._capture_left_image, queue_size=2)
+        self.right_eye_sub = rospy.Subscriber('/right_eye/image_raw', Image, self._capture_right_image, queue_size=2)
         time.sleep(1)
         self.main()
 
     def _capture_left_image(self, msg):
         try:
             self.left_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.left_timestamp = msg.header.stamp
         except CvBridgeError as error:
             print(error)
     
     def _capture_right_image(self, msg):
         try:
             self.right_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.right_timestamp = msg.header.stamp
         except CvBridgeError as error:
             print(error)
     
