@@ -26,20 +26,22 @@ class ROSMotorClient(object):
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=10)
         self.bridge = CvBridge()
-        self.left_eye_sub = rospy.Subscriber('/eye_camera/left_eye/image_raw', Image, self._capture_left_image)
-        self.right_eye_sub = rospy.Subscriber('/eye_camera/right_eye/image_raw', Image, self._capture_right_image)
+        self.left_eye_sub = rospy.Subscriber('/left_eye/image_raw', Image, self._capture_left_image)
+        self.right_eye_sub = rospy.Subscriber('/right_eye/image_raw', Image, self._capture_right_image)
         time.sleep(1)
         self.state
 
     def _capture_left_image(self, msg):
         try:
             self.left_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.left_timestamp = msg.header.stamp.to_time()
         except CvBridgeError as error:
             print(error)
     
     def _capture_right_image(self, msg):
         try:
             self.right_eye_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+            self.right_timestamp = msg.header.stamp.to_time()
         except CvBridgeError as error:
             print(error)
 
@@ -122,11 +124,11 @@ class ROSMotorClient(object):
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
         self.motor_pub.publish(TargetPosture(**args))
-        while self._check_target(targets):
-            time.sleep(0.02)
-            if self.debug:
-                print("[DEBUG] Target not yet reached")
-            pass
+        # while self._check_target(targets):
+        #     time.sleep(0.02)
+        #     if self.debug:
+        #         print("[DEBUG] Target not yet reached")
+        #     pass
         final_state = self._motor_state
         return final_state
     
