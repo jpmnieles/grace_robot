@@ -202,6 +202,33 @@ class Feetech(object):
         
         ts = datetime.timestamp(datetime.now())
         return d_gain, ts
+    
+    @staticmethod
+    def _get_load(raw):
+        if raw > 1023:
+            raw = 0 - raw % 1023
+        return float(raw/1000.0)
+    
+    def get_feedback(self):
+        data_read, scs_comm_result, scs_error = self.PacketHandler.readTxRx(
+            self.PortHandler, self.motor_id, self.REG_ADDR["PRESENT_POSITION"], 15)
+        if scs_comm_result != COMM_SUCCESS:
+            print(self.PacketHandler.getTxRxResult(scs_comm_result))
+        elif scs_error != 0:
+            print(self.PacketHandler.getRxPacketError(scs_error))
+        if len(data_read) ==  15:
+            state = {
+                'time': datetime.timestamp(datetime.now()), # Time of feedback capture
+                'position': SCS_MAKEWORD(data_read[0], data_read[1]),
+                'speed':  SCS_TOHOST(SCS_MAKEWORD(data_read[2], data_read[3]),15),
+                'load': self._get_load(SCS_MAKEWORD(data_read[4], data_read[5])),
+                'voltage': data_read[6]/10.0,
+                'temperature': data_read[7],
+                'status': data_read[9],
+                'moving': data_read[10],
+                'current': SCS_MAKEWORD(data_read[13], data_read[14]),
+            }
+            return state
 
 if __name__ == "__main__":
     left_pan = Feetech(motor_id=15)
@@ -244,8 +271,7 @@ if __name__ == "__main__":
         total_time = 0
         start_ts = datetime.timestamp(datetime.now())
         while(total_time <= 0.75):
-            present_position, present_speed, ts = left_pan.get_present_position_speed()
-            print("[%f] Present position: %d, Present speed: %d" % (ts, present_position, present_speed))
+            state = left_pan.get_feedback()
+            ts = state['time']
+            print(state)
             total_time = (datetime.fromtimestamp(ts) - datetime.fromtimestamp(start_ts)).total_seconds()
-            
-        
