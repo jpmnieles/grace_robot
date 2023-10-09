@@ -21,6 +21,75 @@ import dlib
 from grace.utils import *
 
 
+class BaselineCalibration(object):
+
+    init_buffer = {
+        't-1': {
+            'EyeTurnLeft': 0.0,
+            'EyeTurnRight': 0.0,
+            'EyesUpDown': 0.0
+        },
+        't': {
+            'EyeTurnLeft': 0.0,
+            'EyeTurnRight': 0.0,
+            'EyesUpDown': 0.0
+        }
+    }
+
+    def __init__(self) -> None:
+        self.camera_mtx = load_camera_mtx()
+        self.calib_params = load_json('config/calib/calib_params.json')
+        self.reset_buffer()
+
+    def reset_buffer(self):
+        self.buffer = self.init_buffer.copy()
+
+    def store_latest_state(self, latest_state):
+        self.buffer['t-1'] = self.buffer['t']
+        self.buffer['t'] = latest_state
+
+    def _px_to_deg_fx(self, x, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        theta = math.atan(x/self.camera_mtx[eye]['fx'])
+        theta = math.degrees(x)
+        return theta
+
+    def _px_to_deg_fy(self, y, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        theta = math.atan(y/self.camera_mtx[eye]['fy'])
+        theta = math.degrees(y)
+        return theta
+
+    def compute_left_eye_cmd(self, dx, dy):
+        theta_l_pan_tplus1 = (self.buffer['t']['EyeTurnLeft'] 
+                          + self._px_to_deg_fx(dx, 'left_eye')/self.calib_params['left_eye']['slope'])
+        theta_l_tilt_tplus1 = (self.buffer['t']['EyesUpDown'] 
+                          + self._px_to_deg_fy(dy, 'left_eye')/self.calib_params['tilt_eyes']['slope'])
+        return theta_l_pan_tplus1, theta_l_tilt_tplus1
+
+    def compute_right_eye_cmd(self, dx, dy):
+        theta_r_pan_tplus1 = (self.buffer['t']['EyeTurnRight'] 
+                          + self._px_to_deg_fx(dx, 'right_eye')/self.calib_params['right_eye']['slope'])
+        theta_r_tilt_tplus1  = (self.buffer['t']['EyesUpDown'] 
+                          + self._px_to_deg_fy(dy, 'right_eye')/self.calib_params['tilt_eyes']['slope'])
+        return theta_r_pan_tplus1, theta_r_tilt_tplus1
+
+    def compute_tilt_cmd(self, theta_l_tilt, theta_r_tilt, alpha_tilt=0.5):
+        """alpha_tilt: percentage of theta right tilt
+        """
+        if theta_l_tilt is None:
+            theta_tilt = theta_r_tilt
+        elif theta_r_tilt is None:
+            theta_tilt = theta_l_tilt
+        elif theta_l_tilt is None and theta_r_tilt is None:
+            theta_tilt = None
+        else:
+            theta_tilt = (1-alpha_tilt)*theta_l_tilt + alpha_tilt*theta_r_tilt
+        return theta_tilt
+
+
 class PeopleAttention(object):
 
     def __init__(self) -> None:
@@ -50,16 +119,6 @@ class PeopleAttention(object):
         else:
             self.person_detected = False
 
-    # def process_img(self, eye:str):
-    #     """eye (str): select from ['left_eye', 'right_eye']
-    #     """
-    #     if eye == 'left_eye':
-    #         img = self.left_img
-    #     elif eye == 'right_eye':
-    #         img = self.right_img
-    #     img = self.ctr_cross_img(img, eye)
-    #     return img
-
     def get_pixel_target(self, id:int, eye:str):
         """id (int): select from [0, 1, ...]
         eye (str): select from ['left_eye', 'right_eye']
@@ -76,21 +135,6 @@ class PeopleAttention(object):
         delta_x = x_target - self.camera_mtx[eye]['cx']
         delta_y =  self.camera_mtx[eye]['cy'] - y_target
         return delta_x, delta_y
-
-    
-    def _px_to_deg_fx(self, x, eye:str):
-        """eye (str): select from ['left_eye', 'right_eye']
-        """
-        x = math.atan(x/self.camera_mtx[eye]['fx'])
-        x = math.degrees(x)
-        return x
-
-    def _px_to_deg_fy(self, y, eye:str):
-        """eye (str): select from ['left_eye', 'right_eye']
-        """
-        y = math.atan(y/self.camera_mtx[eye]['fy'])
-        y = math.degrees(y)
-        return y
     
     def visualize_target(self, delta_x, delta_y, img, id:int, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
@@ -123,7 +167,7 @@ class VisuoMotorNode(object):
         self.ats.registerCallback(self._eye_imgs_callback)
         # self.motors_ready_sub = rospy.Subscriber('/motors_ready', Bool, self._motors_ready_callback)
         self.attention = PeopleAttention()
-        # self.calibration = BaselineCalibration()
+        self.calibration = BaselineCalibration()
         self.display_l_img_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
         self.display_r_img_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
         self.motors_ready = True
@@ -137,6 +181,8 @@ class VisuoMotorNode(object):
         # print(left_img_msg.header, right_img_msg.header)
         
         if self.motors_ready:
+            theta_l_pan, theta_r_pan = None, None
+            theta_l_tilt, theta_r_tilt, theta_tilt = None, 
             self.attention.register_imgs(self.left_img, self.right_img)
             self.attention.detect_people(self.left_img, self.right_img)
             if self.attention.person_detected:
@@ -146,16 +192,15 @@ class VisuoMotorNode(object):
                     dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
                     self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
                     rospy.loginfo('(Left Eye) Person Detected')
+                    theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
                 
                 if len(self.attention.r_detections) > 0:
                     dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
                     self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
                     rospy.loginfo('(Right Eye) Person Detected')
+                    theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_l, dy_r)
                     
-                
-        #     #     theta_l_pan, theta_l_tilt = self.calibration.compute_left_img(dx_l, dy_1)
-        #     #     theta_r_pan, theta_r_tilt = self.calibration.compute_right_img(dx_l, dy_r)
-        #     #     theta_tilt = self.calibration.compute_tilt(theta_l_tilt, theta_r_tilt)
+                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt)
         #     #     delta_theta_max = self.calibration.store_command(theta_l_pan, theta_r_pan, theta_tilt)
         #     #     self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
 
