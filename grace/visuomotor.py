@@ -24,7 +24,7 @@ from grace.utils import *
 class PeopleAttention(object):
 
     def __init__(self) -> None:
-        self.camera_mtx = load_json("config/camera/camera_mtx.json")
+        self.camera_mtx = load_camera_mtx()
         self.person_detected = False
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(os.path.join(os.getcwd(),'pretrained','shape_predictor_68_face_landmarks.dat'))
@@ -51,41 +51,53 @@ class PeopleAttention(object):
         else:
             self.person_detected = False
 
-    def process_img(self, eye):
-        if eye == 'left':
+    def process_img(self, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        if eye == 'left_eye':
             img = self.left_img
-        elif eye == 'right':
+        elif eye == 'right_eye':
             img = self.right_img
-        img = self.ctr_cross_img(img)
+        img = self.ctr_cross_img(img, eye)
         return img
 
-    def get_pixel_target(self, id, eye: str):
+    def get_pixel_target(self, id, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
         if len(self.l_detections) > 0:
             landmarks = self.predictor(self.l_gray, self.l_detections[id])
             x_target = landmarks.part(30).x
             y_target = landmarks.part(30).y
-            delta_x = x_target - 317.13846547
-            delta_y =  219.22972847 - y_target
+            delta_x = x_target - self.camera_mtx[eye]['cx']  # 317.13846547
+            delta_y =  self.camera_mtx[eye]['cy'] - y_target  # 219.22972847
     
-    def _px_to_deg_fx(self, x):
-        x = math.atan(x/569.4456315)
+    def _px_to_deg_fx(self, x, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        x = math.atan(x/self.camera_mtx[eye]['fx'])
         x = math.degrees(x)
         return x
 
-    def _px_to_deg_fy(self, x):
-        x = math.atan(x/571.54490033)
-        x = math.degrees(x)
-        return x
+    def _px_to_deg_fy(self, y, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        y = math.atan(y/self.camera_mtx[eye]['fy'])
+        y = math.degrees(y)
+        return y
     
-    def ctr_cross_img(self, img):
-        img = cv2.line(img, (315, 0), (315, 480), (0,255,0))
-        img = cv2.line(img, (0, 202), (640, 202), (0,255,0))
-        img = cv2.drawMarker(img, (315,202), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+    def ctr_cross_img(self, img, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
+        img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (640, round(self.camera_mtx[eye]['cy'])), (0,255,0))
+        img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         return img
     
-    def display_target(self, delta_x, delta_y, img):
-        abs_x = 314.69441889 + delta_x
-        abs_y = 201.68845842 - delta_y
+    def display_target(self, delta_x, delta_y, img, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        abs_x = self.camera_mtx[eye]['cx'] + delta_x
+        abs_y = self.camera_mtx[eye]['cy'] - delta_y
         disp_img = cv2.drawMarker(img, (round(abs_x),round(abs_y)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
         return disp_img
 
