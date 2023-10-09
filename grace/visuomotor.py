@@ -33,7 +33,6 @@ class PeopleAttention(object):
     def register_imgs(self, left_img, right_img):
         self.left_img = left_img
         self.right_img  = right_img
-        self.detect_people(self.left_img, self.right_img)
 
     def detect_people(self, left_img, right_img):
         # Detection       
@@ -61,15 +60,23 @@ class PeopleAttention(object):
     #     img = self.ctr_cross_img(img, eye)
     #     return img
 
-    def get_pixel_target(self, id, eye:str):
-        """eye (str): select from ['left_eye', 'right_eye']
+    def get_pixel_target(self, id:int, eye:str):
+        """id (int): select from [0, 1, ...]
+        eye (str): select from ['left_eye', 'right_eye']
         """
-        if len(self.l_detections) > 0:
-            landmarks = self.predictor(self.l_gray, self.l_detections[id])
-            x_target = landmarks.part(30).x
-            y_target = landmarks.part(30).y
-            delta_x = x_target - self.camera_mtx[eye]['cx']  # 317.13846547
-            delta_y =  self.camera_mtx[eye]['cy'] - y_target  # 219.22972847
+        if eye == 'left_eye':
+            detection = self.l_detections[id]
+            img = self.l_gray
+        elif eye == 'right_eye':
+            detection = self.r_detections[id]
+            img = self.r_gray
+        landmarks = self.predictor(img, detection)
+        x_target = landmarks.part(30).x
+        y_target = landmarks.part(30).y
+        delta_x = x_target - self.camera_mtx[eye]['cx']
+        delta_y =  self.camera_mtx[eye]['cy'] - y_target
+        return delta_x, delta_y
+
     
     def _px_to_deg_fx(self, x, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
@@ -85,14 +92,18 @@ class PeopleAttention(object):
         y = math.degrees(y)
         return y
     
-    def display_target(self, delta_x, delta_y, img, eye:str):
+    def visualize_target(self, delta_x, delta_y, img, id:int, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
         """
+        if eye == 'left_eye':
+            detection = self.l_detections[id]
+        elif eye == 'right_eye':
+            detection = self.r_detections[id]
+        cv2.rectangle(img, (detection.left(), detection.top()), (detection.right(), detection.bottom()), (0, 0, 255), 2)
         abs_x = self.camera_mtx[eye]['cx'] + delta_x
         abs_y = self.camera_mtx[eye]['cy'] - delta_y
         disp_img = cv2.drawMarker(img, (round(abs_x),round(abs_y)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
         return disp_img
-
 
 
 class VisuoMotorNode(object):
@@ -127,19 +138,26 @@ class VisuoMotorNode(object):
         
         if self.motors_ready:
             self.attention.register_imgs(self.left_img, self.right_img)
+            self.attention.detect_people(self.left_img, self.right_img)
             if self.attention.person_detected:
                 id = 0  # self.attention.get_target()
-        #     #     dx_l, dy_l = self.attention.get_pixel_coord(id, 'left')
-        #     #     dx_r, dy_r = self.attention.get_pixel_coord(id, 'right')
-                # self.left_img = self.attention.process_img('left')
-                # self.right_img = self.attention.process_img('right')
+                
+                if len(self.attention.l_detections) > 0:
+                    dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
+                    self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
+                    rospy.loginfo('(Left Eye) Person Detected')
+                
+                if len(self.attention.r_detections) > 0:
+                    dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
+                    self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
+                    rospy.loginfo('(Right Eye) Person Detected')
+                    
                 
         #     #     theta_l_pan, theta_l_tilt = self.calibration.compute_left_img(dx_l, dy_1)
         #     #     theta_r_pan, theta_r_tilt = self.calibration.compute_right_img(dx_l, dy_r)
         #     #     theta_tilt = self.calibration.compute_tilt(theta_l_tilt, theta_r_tilt)
         #     #     delta_theta_max = self.calibration.store_command(theta_l_pan, theta_r_pan, theta_tilt)
         #     #     self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
-                pass
 
         self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
         self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
