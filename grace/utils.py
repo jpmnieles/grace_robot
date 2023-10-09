@@ -3,6 +3,21 @@ import sys
 import yaml
 import math
 import cv2
+import json
+
+
+def load_json(filename: str):
+    # Get the current file's directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the absolute path by joining the current directory and relative path
+    absolute_path = os.path.join(current_dir, '..', filename)
+
+    # Load the JSON data
+    with open(absolute_path, 'r') as file:
+        json_data = json.load(file)
+
+    return json_data
 
 
 def motor_int_to_angle(motor, position, degrees):

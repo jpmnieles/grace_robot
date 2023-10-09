@@ -1,5 +1,7 @@
 import os
 import sys
+sys.path.append(os.getcwd())
+
 import math
 import time
 import yaml
@@ -16,12 +18,14 @@ from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import dlib
 
+from grace.utils import *
+
 
 class PeopleAttention(object):
 
     def __init__(self) -> None:
+        self.camera_mtx = load_json("config/camera/camera_mtx.json")
         self.person_detected = False
-
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(os.path.join(os.getcwd(),'pretrained','shape_predictor_68_face_landmarks.dat'))
         dlib.cuda.set_device(0)
@@ -43,6 +47,7 @@ class PeopleAttention(object):
         # Person detected or not
         if len(self.l_detections) > 0 or len(self.r_detections) > 0:
             self.person_detected = True
+            print(self.camera_mtx)
         else:
             self.person_detected = False
 
@@ -131,6 +136,7 @@ class VisuoMotorNode(object):
         #     #     self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
         #     pass
 
+        #TODO: Add fixation cross here
         self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
         self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
 
