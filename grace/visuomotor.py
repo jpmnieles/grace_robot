@@ -25,16 +25,38 @@ class BaselineCalibration(object):
 
     init_buffer = {
         't-1': {
-            'EyeTurnLeft': 0.0,
-            'EyeTurnRight': 0.0,
-            'EyesUpDown': 0.0
+            'cmd': {
+                'EyeTurnLeft': 0.0,
+                'EyeTurnRight': 0.0,
+                'EyesUpDown': 0.0
+            },
+            'state': {
+                'EyeTurnLeft': 0.0,
+                'EyeTurnRight': 0.0,
+                'EyesUpDown': 0.0
+            },
         },
         't': {
-            'EyeTurnLeft': 0.0,
-            'EyeTurnRight': 0.0,
-            'EyesUpDown': 0.0
+            'cmd': {
+                'EyeTurnLeft': 0.0,
+                'EyeTurnRight': 0.0,
+                'EyesUpDown': 0.0
+            },
+            'state': {
+                'EyeTurnLeft': 0.0,
+                'EyeTurnRight': 0.0,
+                'EyesUpDown': 0.0
+            },
+        },
+        't+1': {
+            'cmd': {
+                'EyeTurnLeft': 0.0,
+                'EyeTurnRight': 0.0,
+                'EyesUpDown': 0.0
+            },
         }
     }
+
 
     def __init__(self) -> None:
         self.camera_mtx = load_camera_mtx()
@@ -44,9 +66,10 @@ class BaselineCalibration(object):
     def reset_buffer(self):
         self.buffer = self.init_buffer.copy()
 
-    def store_latest_state(self, latest_state):
+    def store_latest_state (self, latest_state):
+        self.buffer['t']['cmd'] = self.buffer['t+1']['cmd']
         self.buffer['t-1'] = self.buffer['t']
-        self.buffer['t'] = latest_state
+        self.buffer['t']['state'] = latest_state
 
     def _px_to_deg_fx(self, x, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
@@ -63,16 +86,16 @@ class BaselineCalibration(object):
         return theta
 
     def compute_left_eye_cmd(self, dx, dy):
-        theta_l_pan_tplus1 = (self.buffer['t']['EyeTurnLeft'] 
+        theta_l_pan_tplus1 = (self.buffer['t']['state']['EyeTurnLeft'] 
                           + self._px_to_deg_fx(dx, 'left_eye')/self.calib_params['left_eye']['slope'])
-        theta_l_tilt_tplus1 = (self.buffer['t']['EyesUpDown'] 
+        theta_l_tilt_tplus1 = (self.buffer['t']['state']['EyesUpDown'] 
                           + self._px_to_deg_fy(dy, 'left_eye')/self.calib_params['tilt_eyes']['slope'])
         return theta_l_pan_tplus1, theta_l_tilt_tplus1
 
     def compute_right_eye_cmd(self, dx, dy):
-        theta_r_pan_tplus1 = (self.buffer['t']['EyeTurnRight'] 
+        theta_r_pan_tplus1 = (self.buffer['t']['state']['EyeTurnRight'] 
                           + self._px_to_deg_fx(dx, 'right_eye')/self.calib_params['right_eye']['slope'])
-        theta_r_tilt_tplus1  = (self.buffer['t']['EyesUpDown'] 
+        theta_r_tilt_tplus1  = (self.buffer['t']['state']['EyesUpDown'] 
                           + self._px_to_deg_fy(dy, 'right_eye')/self.calib_params['tilt_eyes']['slope'])
         return theta_r_pan_tplus1, theta_r_tilt_tplus1
 
@@ -88,6 +111,26 @@ class BaselineCalibration(object):
         else:
             theta_tilt = (1-alpha_tilt)*theta_l_tilt + alpha_tilt*theta_r_tilt
         return theta_tilt
+    
+    def store_cmd(self, theta_l_pan, theta_r_pan, theta_tilt):
+        if theta_l_pan is None:
+            theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']
+        if theta_r_pan is None:
+            theta_r_pan = self.buffer['t']['state']['EyeTurnRight']
+        if theta_tilt is None:
+            theta_tilt = self.buffer['t']['state']['EyesUpDown']
+
+        self.buffer['t+1']['cmd']['EyeTurnLeft'] = theta_l_pan
+        self.buffer['t+1']['cmd']['EyeTurnRight'] = theta_r_pan
+        self.buffer['t+1']['cmd']['EyesUpDown'] = theta_tilt
+
+        abs_delta_theta_list = []
+        for motor in self.buffer['t+1']['cmd'].keys():
+            abs_delta_theta = abs(self.buffer['t+1']['cmd'][motor] 
+                          - self.buffer['t']['state'][motor])
+            abs_delta_theta_list.append(abs_delta_theta)
+        abs_delta_theta_max = max(abs_delta_theta_list)
+        return abs_delta_theta_max
 
 
 class PeopleAttention(object):
@@ -182,7 +225,7 @@ class VisuoMotorNode(object):
         
         if self.motors_ready:
             theta_l_pan, theta_r_pan = None, None
-            theta_l_tilt, theta_r_tilt, theta_tilt = None, 
+            theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
             self.attention.register_imgs(self.left_img, self.right_img)
             self.attention.detect_people(self.left_img, self.right_img)
             if self.attention.person_detected:
@@ -191,23 +234,24 @@ class VisuoMotorNode(object):
                 if len(self.attention.l_detections) > 0:
                     dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
                     self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
-                    rospy.loginfo('(Left Eye) Person Detected')
+                    # rospy.loginfo('(Left Eye) Person Detected')
                     theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
                 
                 if len(self.attention.r_detections) > 0:
                     dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
                     self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
-                    rospy.loginfo('(Right Eye) Person Detected')
-                    theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_l, dy_r)
+                    # rospy.loginfo('(Right Eye) Person Detected')
+                    theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r)
                     
                 theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt)
-        #     #     delta_theta_max = self.calibration.store_command(theta_l_pan, theta_r_pan, theta_tilt)
+                abs_delta_theta_max = self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
         #     #     self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
-
-        self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
-        self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
-        self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
-        self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+        
+        if self.motors_ready:
+            # self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
+            # self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
+            self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
+            self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
 
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
