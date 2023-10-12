@@ -196,7 +196,7 @@ class PeopleAttention(object):
 class VisuoMotorNode(object):
     
 
-    def __init__(self):
+    def __init__(self, motor_fps=5):
         # motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"]
         # self.set_motor_limits(motors)
         # self._motor_state = [None]*self.num_names
@@ -208,50 +208,52 @@ class VisuoMotorNode(object):
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
         self.ats.registerCallback(self._eye_imgs_callback)
-        # self.motors_ready_sub = rospy.Subscriber('/motors_ready', Bool, self._motors_ready_callback)
         self.attention = PeopleAttention()
         self.calibration = BaselineCalibration()
         self.display_l_img_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
         self.display_r_img_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
-        self.motors_ready = True
-    
-    # def _motors_ready_callback(self, msg):
-    #     self.motors_ready = msg.data
+        self.motor_fps = True
 
     def _eye_imgs_callback(self, left_img_msg, right_img_msg):
         self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
         self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
         # print(left_img_msg.header, right_img_msg.header)
         
-        if self.motors_ready:
+        self.attention.register_imgs(self.left_img, self.right_img)
+        self.attention.detect_people(self.left_img, self.right_img)
+
+        id = 0
+        if len(self.attention.l_detections) > 0:
+            dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
+            self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
+        if len(self.attention.r_detections) > 0:
+            dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
+            self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
+        
+        if self.motor_fps:
+            
             theta_l_pan, theta_r_pan = None, None
             theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
-            self.attention.register_imgs(self.left_img, self.right_img)
-            self.attention.detect_people(self.left_img, self.right_img)
-            if self.attention.person_detected:
-                id = 0  # self.attention.get_target()
+            
+            if len(self.attention.l_detections) > 0:
+                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
+            if len(self.attention.r_detections) > 0:
+                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r)
                 
-                if len(self.attention.l_detections) > 0:
-                    dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
-                    self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
-                    # rospy.loginfo('(Left Eye) Person Detected')
-                    theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-                
-                if len(self.attention.r_detections) > 0:
-                    dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
-                    self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
-                    # rospy.loginfo('(Right Eye) Person Detected')
-                    theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r)
-                    
-                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt)
-                abs_delta_theta_max = self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-        #     #     self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
+            theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt)
+            abs_delta_theta_max = self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
+            # self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
+
+            # Delay
+            camera_delay = time.sleep(0.086)
+            motor_delay = time.sleep(0.09)
+
+            # Visualization
+            self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
+            self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
         
-        if self.motors_ready:
-            # self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
-            # self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
-            self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
-            self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+        self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
+        self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
 
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
