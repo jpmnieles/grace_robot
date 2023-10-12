@@ -17,6 +17,7 @@ from cv_bridge import CvBridge, CvBridgeError
 
 import cv2
 import dlib
+import numpy as np
 
 from grace.utils import *
 
@@ -205,24 +206,37 @@ class VisuoMotorNode(object):
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
-        self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)
+        self.right_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
         self.ats.registerCallback(self._eye_imgs_callback)
         self.attention = PeopleAttention()
         self.calibration = BaselineCalibration()
-        self.display_l_img_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
-        self.display_r_img_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
-        self.motor_fps = True
+        self.rt_l_display_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
+        self.rt_r_display_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
+        self.motor_display_pub = rospy.Publisher('/eyes/image_processed', Image, queue_size=1)
+        self.frame_trigger = 6  # 5.05 fps = 1/(6*0.033) ; given frame_count = 6
+        self.frame_ctr = 0
 
     def _eye_imgs_callback(self, left_img_msg, right_img_msg):
+        # Initialization
+        dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
+        theta_l_pan, theta_r_pan = None, None
+        theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
+        
+        # Frame Counter
+        self.frame_ctr += 1
+
+        # Conversion of ROS Message
         self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
         self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
         # print(left_img_msg.header, right_img_msg.header)
         
+        # Face Detection
         self.attention.register_imgs(self.left_img, self.right_img)
         self.attention.detect_people(self.left_img, self.right_img)
 
-        id = 0
+        # Attention
+        id = 0  # Person ID
         if len(self.attention.l_detections) > 0:
             dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
             self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
@@ -230,30 +244,30 @@ class VisuoMotorNode(object):
             dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
             self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
         
-        if self.motor_fps:
+        # Output Display 1
+        self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
+        self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+        
+        # Motor Trigger
+        if self.frame_ctr == self.frame_trigger:
             
-            theta_l_pan, theta_r_pan = None, None
-            theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
-            
-            if len(self.attention.l_detections) > 0:
-                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-            if len(self.attention.r_detections) > 0:
-                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r)
-                
-            theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt)
+            # Calibration Algorithm
+            theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
+            theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
+            theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
             abs_delta_theta_max = self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
             # self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
-
-            # Delay
-            camera_delay = time.sleep(0.086)
-            motor_delay = time.sleep(0.09)
 
             # Visualization
             self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
             self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
-        
-        self.display_l_img_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
-        self.display_r_img_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+            concat_img = np.hstack((self.left_img, self.right_img))
+
+            # Output Display 2
+            self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
+
+            # Reset Frame Counter
+            self.frame_ctr = 0
 
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
