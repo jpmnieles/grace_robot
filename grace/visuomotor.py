@@ -12,12 +12,13 @@ import message_filters
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
 from sensor_msgs.msg import Image
-from std_msgs.msg import Bool
+from std_msgs.msg import Float32
 from cv_bridge import CvBridge, CvBridgeError
 
 import cv2
 import dlib
 import numpy as np
+import random
 
 from grace.utils import *
 
@@ -67,7 +68,7 @@ class BaselineCalibration(object):
     def reset_buffer(self):
         self.buffer = self.init_buffer.copy()
 
-    def store_latest_state (self, latest_state):
+    def store_latest_state(self, latest_state):
         self.buffer['t']['cmd'] = self.buffer['t+1']['cmd']
         self.buffer['t-1'] = self.buffer['t']
         self.buffer['t']['state'] = latest_state
@@ -124,14 +125,6 @@ class BaselineCalibration(object):
         self.buffer['t+1']['cmd']['EyeTurnLeft'] = theta_l_pan
         self.buffer['t+1']['cmd']['EyeTurnRight'] = theta_r_pan
         self.buffer['t+1']['cmd']['EyesUpDown'] = theta_tilt
-
-        abs_delta_theta_list = []
-        for motor in self.buffer['t+1']['cmd'].keys():
-            abs_delta_theta = abs(self.buffer['t+1']['cmd'][motor] 
-                          - self.buffer['t']['state'][motor])
-            abs_delta_theta_list.append(abs_delta_theta)
-        abs_delta_theta_max = max(abs_delta_theta_list)
-        return abs_delta_theta_max
 
 
 class PeopleAttention(object):
@@ -196,19 +189,43 @@ class PeopleAttention(object):
 
 class VisuoMotorNode(object):
     
+    camera_buffer = {
+        't-1': {
+            'left_eye': None,
+            'right_eye': None
+        },
+        't': {
+            'left_eye': None,
+            'right_eye': None
+        },
+    }
 
-    def __init__(self, motor_fps=5):
-        # motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"]
-        # self.set_motor_limits(motors)
+
+    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+        self.motors = motors
+        self.degrees = degrees
+        self._set_motor_limits(motors)
         # self._motor_state = [None]*self.num_names
         # self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
-        # self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=5)
+        self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
+        # self.left_eye_motor_sub = message_filters.Subscriber("/motor_state/left_eye_motor", Float32)
+        # self.right_eye_motor_sub = message_filters.Subscriber("/motor_state/right_eye_motor", Float32)
+        # self.tilt_eye_motors_sub = message_filters.Subscriber("/motor_state/tilt_eyes_motor", Float32)
+        # self.ats_motors = message_filters.ApproximateTimeSynchronizer([self.left_eye_motor_sub, 
+        #                                                                self.right_eye_motor_sub,
+        #                                                                self.tilt_eye_motors_sub], 
+        #                                                                queue_size=1, slop=0.01,
+        #                                                                allow_headerless=True)
+        # self.ats_motors.registerCallback(self.motor_states_callback)
+        self.motors_sub = rospy.Subscriber('/motor_states', Float32, self.motor_states_callback)
+        time.sleep(1)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
-        self.ats.registerCallback(self._eye_imgs_callback)
+        self.ats.registerCallback(self.eye_imgs_callback)
+
         self.attention = PeopleAttention()
         self.calibration = BaselineCalibration()
         self.rt_l_display_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
@@ -217,7 +234,7 @@ class VisuoMotorNode(object):
         self.frame_trigger = 6  # 5.05 fps = 1/(6*0.033) ; given frame_count = 6
         self.frame_ctr = 0
 
-    def _eye_imgs_callback(self, left_img_msg, right_img_msg):
+    def eye_imgs_callback(self, left_img_msg, right_img_msg):
         # Initialization
         dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
         theta_l_pan, theta_r_pan = None, None
@@ -250,13 +267,15 @@ class VisuoMotorNode(object):
         
         # Motor Trigger
         if self.frame_ctr == self.frame_trigger:
+            # Get Motor State
+            self.calibration.store_latest_state(self._motor_state)
             
             # Calibration Algorithm
             theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
             theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
             theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
-            abs_delta_theta_max = self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-            # self.motor_pub.publish(theta_l_pan, theta_r_pan, theta_tilt, delta_theta_max)
+            self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
+            self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
             self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
@@ -268,6 +287,63 @@ class VisuoMotorNode(object):
 
             # Reset Frame Counter
             self.frame_ctr = 0
+
+    def motor_states_callback(self, msg):
+        self._motor_state = {
+            'EyeTurnLeft': msg.data,
+            'EyeTurnRight': msg.data + random.randint(-1,1) + random.random(),
+            'EyesUpDown': msg.data + random.randint(-4,4) + random.random()
+        }
+
+    def _convert_to_angle(self, motor, position):
+        if self.degrees:
+            unit = 360
+        else:
+            unit = math.pi
+        angle = ((position-self._motor_limits[motor]['int_init'])/4096)*unit
+        return angle
+
+    def _convert_to_motor_int(self, motor, angle):
+        if self.degrees:
+            unit = 360
+        else:
+            unit = math.pi
+        angle = round((angle/unit)*4096 + self._motor_limits[motor]['int_init'])
+        return angle
+        
+    def _capture_limits(self, motor):
+        int_min = motors_dict[motor]['motor_min']
+        int_init = motors_dict[motor]['init']
+        int_max = motors_dict[motor]['motor_max']
+        angle_min = motor_int_to_angle(motor, int_min, self.degrees)
+        angle_init = motor_int_to_angle(motor, int_init, self.degrees)
+        angle_max = motor_int_to_angle(motor, int_max, self.degrees)
+        limits = {'int_min': int_min, 
+                  'int_init': int_init, 
+                  'int_max': int_max,
+                  'angle_min': angle_min, 
+                  'angle_init': angle_init, 
+                  'angle_max': angle_max}
+        return limits
+
+    def _check_limits(self, name, value):
+        if value < self._motor_limits[name]['angle_min']:
+            value = self._motor_limits[name]['angle_min']
+        elif value > self._motor_limits[name]['angle_max']:
+            value = self._motor_limits[name]['angle_max']
+        return value
+
+    def _set_motor_limits(self, names: list):
+        self.names = names
+        self.num_names = len(self.names)
+        self._motor_limits = {motor: self._capture_limits(motor) for motor in self.names}
+    
+    def move(self, values):
+        values = [self._check_limits(self.names[i],x) for i,x in enumerate(values)]
+        if self.degrees:
+            values = [math.radians(x) for x in values]
+        args = {"names":self.names, "values":values}
+        self.motor_pub.publish(TargetPosture(**args))
 
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
