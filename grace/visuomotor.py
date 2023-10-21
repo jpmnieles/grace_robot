@@ -21,6 +21,7 @@ import numpy as np
 import random
 
 from grace.utils import *
+import threading
 
 
 class BaselineCalibration(object):
@@ -60,18 +61,23 @@ class BaselineCalibration(object):
     }
 
 
-    def __init__(self) -> None:
+    def __init__(self, lock) -> None:
+        self.lock = lock
         self.camera_mtx = load_camera_mtx()
         self.calib_params = load_json('config/calib/calib_params.json')
         self.reset_buffer()
 
     def reset_buffer(self):
-        self.buffer = self.init_buffer.copy()
+        with self.lock:
+            self.buffer = self.init_buffer.copy()
 
     def store_latest_state(self, latest_state):
         self.buffer['t']['cmd'] = self.buffer['t+1']['cmd']
         self.buffer['t-1'] = self.buffer['t']
-        self.buffer['t']['state'] = latest_state
+
+        self.buffer['t']['state']['EyeTurnLeft'] = latest_state[0]
+        self.buffer['t']['state']['EyeTurnRight'] = latest_state[1]
+        self.buffer['t']['state']['EyesUpDown'] = latest_state[2]
 
     def _px_to_deg_fx(self, x, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
@@ -88,16 +94,16 @@ class BaselineCalibration(object):
         return theta
 
     def compute_left_eye_cmd(self, dx, dy):
-        theta_l_pan_tplus1 = (self.buffer['t']['state']['EyeTurnLeft'] 
+        theta_l_pan_tplus1 = (self.buffer['t']['state']['EyeTurnLeft']['angle'] 
                           + self._px_to_deg_fx(dx, 'left_eye')/self.calib_params['left_eye']['slope'])
-        theta_l_tilt_tplus1 = (self.buffer['t']['state']['EyesUpDown'] 
+        theta_l_tilt_tplus1 = (self.buffer['t']['state']['EyesUpDown']['angle'] 
                           + self._px_to_deg_fy(dy, 'left_eye')/self.calib_params['tilt_eyes']['slope'])
         return theta_l_pan_tplus1, theta_l_tilt_tplus1
 
     def compute_right_eye_cmd(self, dx, dy):
-        theta_r_pan_tplus1 = (self.buffer['t']['state']['EyeTurnRight'] 
+        theta_r_pan_tplus1 = (self.buffer['t']['state']['EyeTurnRight']['angle'] 
                           + self._px_to_deg_fx(dx, 'right_eye')/self.calib_params['right_eye']['slope'])
-        theta_r_tilt_tplus1  = (self.buffer['t']['state']['EyesUpDown'] 
+        theta_r_tilt_tplus1  = (self.buffer['t']['state']['EyesUpDown']['angle'] 
                           + self._px_to_deg_fy(dy, 'right_eye')/self.calib_params['tilt_eyes']['slope'])
         return theta_r_pan_tplus1, theta_r_tilt_tplus1
 
@@ -116,11 +122,11 @@ class BaselineCalibration(object):
     
     def store_cmd(self, theta_l_pan, theta_r_pan, theta_tilt):
         if theta_l_pan is None:
-            theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']
+            theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
         if theta_r_pan is None:
-            theta_r_pan = self.buffer['t']['state']['EyeTurnRight']
+            theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
         if theta_tilt is None:
-            theta_tilt = self.buffer['t']['state']['EyesUpDown']
+            theta_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
 
         self.buffer['t+1']['cmd']['EyeTurnLeft'] = theta_l_pan
         self.buffer['t+1']['cmd']['EyeTurnRight'] = theta_r_pan
@@ -202,18 +208,21 @@ class VisuoMotorNode(object):
 
 
     def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+        self.motor_lock = threading.Lock()
+        self.buffer_lock = threading.Lock()
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
 
+        self.attention = PeopleAttention()
+        self.calibration = BaselineCalibration(self.buffer_lock)
+
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
-
 
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
-        self.motors_sub = rospy.Subscriber('/motor_states', Float32, self.motor_states_callback)
         time.sleep(1)
 
         # self._motor_state = [None]*self.num_names
@@ -223,11 +232,11 @@ class VisuoMotorNode(object):
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
         self.ats.registerCallback(self.eye_imgs_callback)
 
-        self.attention = PeopleAttention()
-        self.calibration = BaselineCalibration()
         self.rt_l_display_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
         self.rt_r_display_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
         self.motor_display_pub = rospy.Publisher('/eyes/image_processed', Image, queue_size=1)
+
+
 
 
     def _capture_state(self, msg):
@@ -243,13 +252,19 @@ class VisuoMotorNode(object):
                 eye_motors_list.append(idx)
         if len(eye_motors_list) == 3:
             rospy.loginfo('Complete')
-            rospy.loginfo(msg.motor_states[eye_motors_list[0]])
-            rospy.loginfo(msg.motor_states[eye_motors_list[1]])
-            rospy.loginfo(msg.motor_states[eye_motors_list[2]])
+            # rospy.loginfo(msg.motor_states[eye_motors_list[0]])
+            # rospy.loginfo(msg.motor_states[eye_motors_list[1]])
+            # rospy.loginfo(msg.motor_states[eye_motors_list[2]])
+            with self.motor_lock:
+                for i in range(self.num_names):
+                    motor_msg = msg.motor_states[eye_motors_list[i]]
+                    idx = self.motors.index(motor_msg.name)
+                    self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
+                    self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
         else:
             rospy.loginfo('Incomplete')
         
-        # rospy.loginfo(str(eye_motors_list))
+        # rospy.loginfo(str(self._motor_states))
         # rospy.loginfo(str(temp_name_list))
         
         elapsed_time = (curr_stamp - self.motor_stamp_tminus1).to_sec()
@@ -293,14 +308,20 @@ class VisuoMotorNode(object):
             self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
             self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
         
-            # Get Motor State
-            # self.calibration.store_latest_state(self._motor_state)
+            with self.buffer_lock:
+                # Get Motor State
+                with self.motor_lock:
+                    self.calibration.store_latest_state(self._motor_states)
+                
+                # Calibration Algorithm
+                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
+                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
+                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
+                self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
+
+                rospy.loginfo(self.calibration.buffer)
             
-            # Calibration Algorithm
-            theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-            theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
-            theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
-            self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
+            # Movement
             # self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
@@ -310,29 +331,6 @@ class VisuoMotorNode(object):
 
             # Output Display 2
             self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
-
-    def motor_states_callback(self, msg):
-        self._motor_state = {
-            'EyeTurnLeft': msg.data,
-            'EyeTurnRight': msg.data + random.randint(-1,1) + random.random(),
-            'EyesUpDown': msg.data + random.randint(-4,4) + random.random()
-        }
-
-    def _convert_to_angle(self, motor, position):
-        if self.degrees:
-            unit = 360
-        else:
-            unit = math.pi
-        angle = ((position-self._motor_limits[motor]['int_init'])/4096)*unit
-        return angle
-
-    def _convert_to_motor_int(self, motor, angle):
-        if self.degrees:
-            unit = 360
-        else:
-            unit = math.pi
-        angle = round((angle/unit)*4096 + self._motor_limits[motor]['int_init'])
-        return angle
         
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
@@ -360,6 +358,7 @@ class VisuoMotorNode(object):
         self.names = names
         self.num_names = len(self.names)
         self._motor_limits = {motor: self._capture_limits(motor) for motor in self.names}
+        self._motor_states = [None]*self.num_names
     
     def move(self, values):
         values = [self._check_limits(self.names[i],x) for i,x in enumerate(values)]
