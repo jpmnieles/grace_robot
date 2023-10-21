@@ -22,6 +22,7 @@ import random
 
 from grace.utils import *
 import threading
+import copy
 
 
 class BaselineCalibration(object):
@@ -197,12 +198,12 @@ class VisuoMotorNode(object):
     
     camera_buffer = {
         't-1': {
-            'left_eye': None,
-            'right_eye': None
+            'left_eye': np.zeros((480,640,3), dtype=np.uint8),
+            'right_eye': np.zeros((480,640,3), dtype=np.uint8),
         },
         't': {
-            'left_eye': None,
-            'right_eye': None
+            'left_eye': np.zeros((480,640,3), dtype=np.uint8),
+            'right_eye': np.zeros((480,640,3), dtype=np.uint8)
         },
     }
 
@@ -236,6 +237,7 @@ class VisuoMotorNode(object):
         self.rt_r_display_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
         self.motor_display_pub = rospy.Publisher('/eyes/image_processed', Image, queue_size=1)
 
+        self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
 
 
 
@@ -279,7 +281,8 @@ class VisuoMotorNode(object):
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
         if elapsed_time > 283e-3:
-            # rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+            print('--------------')
+            rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
 
             # Initialization
@@ -291,24 +294,29 @@ class VisuoMotorNode(object):
             self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             # print(left_img_msg.header, right_img_msg.header)
-        
+
             # Face Detection
             self.attention.register_imgs(self.left_img, self.right_img)
             self.attention.detect_people(self.left_img, self.right_img)
+
 
             # Attention
             id = 0  # Person ID
             if len(self.attention.l_detections) > 0:
                 dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
                 self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
+
             if len(self.attention.r_detections) > 0:
                 dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
                 self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
-            
-            # Output Display 1
-            self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
-            self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
-        
+
+            # Snapshot
+            self.camera_buffer['t-1']['left_eye'] = copy.deepcopy(self.camera_buffer['t']['left_eye'])
+            self.camera_buffer['t']['left_eye'] = copy.deepcopy(self.left_img)
+            self.camera_buffer['t-1']['right_eye'] = copy.deepcopy(self.camera_buffer['t']['right_eye'])
+            self.camera_buffer['t']['right_eye'] = copy.deepcopy(self.right_img)
+
+            # Storing
             with self.buffer_lock:
                 # Get Motor State
                 with self.motor_lock:
@@ -320,7 +328,6 @@ class VisuoMotorNode(object):
                 theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
                 self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
                 
-                print('--------------')
                 print(self._motor_states)
                 print('dx_l:', dx_l)
                 print('dy_l:', dy_l)
@@ -338,11 +345,42 @@ class VisuoMotorNode(object):
             # Visualization
             self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
             self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
-            concat_img = np.hstack((self.left_img, self.right_img))
+            # concat_img = np.hstack((self.left_img, self.right_img))
 
-            # Output Display 2
-            self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
+            if len(self.attention.l_detections) > 0 and len(self.attention.l_detections) > 0:
+                self.disp_img = self.visualize_targets()
+
+            # Output Display 1
+            self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
+            self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+
+            # Output Display 2                
+            self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(self.disp_img, encoding="bgr8"))
+
+    def visualize_targets(self):
+        # Center Marker
+        left_img_tminus1 = self.ctr_cross_img(self.camera_buffer['t-1']['left_eye'], 'left_eye')
+        right_img_tminus1 = self.ctr_cross_img(self.camera_buffer['t-1']['right_eye'], 'right_eye')
+        left_img_t = self.ctr_cross_img(self.camera_buffer['t']['left_eye'], 'left_eye')
+        right_img_t = self.ctr_cross_img(self.camera_buffer['t']['right_eye'], 'right_eye')
+
+        # Cropping
+        left_img_tminus1 = left_img_tminus1[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
+                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
+        right_img_tminus1 = right_img_tminus1[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
+                                        round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
+        left_img_t = left_img_t[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
+                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
+        right_img_t= right_img_t[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
+                                        round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
         
+        # Concatenation
+        before_imgs = np.hstack((left_img_tminus1, right_img_tminus1))
+        after_imgs = np.hstack((left_img_t, right_img_t))
+        disp_img = np.vstack((before_imgs, after_imgs))
+
+        return disp_img
+
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
         int_init = motors_dict[motor]['init']
