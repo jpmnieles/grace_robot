@@ -83,14 +83,14 @@ class BaselineCalibration(object):
         """eye (str): select from ['left_eye', 'right_eye']
         """
         theta = math.atan(x/self.camera_mtx[eye]['fx'])
-        theta = math.degrees(x)
+        theta = math.degrees(theta)
         return theta
 
     def _px_to_deg_fy(self, y, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
         """
         theta = math.atan(y/self.camera_mtx[eye]['fy'])
-        theta = math.degrees(y)
+        theta = math.degrees(theta)
         return theta
 
     def compute_left_eye_cmd(self, dx, dy):
@@ -251,7 +251,7 @@ class VisuoMotorNode(object):
             if x.name in self.names:
                 eye_motors_list.append(idx)
         if len(eye_motors_list) == 3:
-            rospy.loginfo('Complete')
+            # rospy.loginfo('Complete')
             # rospy.loginfo(msg.motor_states[eye_motors_list[0]])
             # rospy.loginfo(msg.motor_states[eye_motors_list[1]])
             # rospy.loginfo(msg.motor_states[eye_motors_list[2]])
@@ -262,15 +262,16 @@ class VisuoMotorNode(object):
                     self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
                     self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
         else:
-            rospy.loginfo('Incomplete')
+            # rospy.loginfo('Incomplete')
+            pass
         
         # rospy.loginfo(str(self._motor_states))
         # rospy.loginfo(str(temp_name_list))
         
-        elapsed_time = (curr_stamp - self.motor_stamp_tminus1).to_sec()
-        rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
-        self.motor_stamp_tminus1 = curr_stamp
-        rospy.loginfo('-----------')
+        # elapsed_time = (curr_stamp - self.motor_stamp_tminus1).to_sec()
+        # rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+        # self.motor_stamp_tminus1 = curr_stamp
+        # rospy.loginfo('-----------')
 
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg):
@@ -318,11 +319,21 @@ class VisuoMotorNode(object):
                 theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
                 theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
                 self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-
-                rospy.loginfo(self.calibration.buffer)
+                
+                print('--------------')
+                print(self._motor_states)
+                print('dx_l:', dx_l)
+                print('dy_l:', dy_l)
+                print('dx_r:', dx_l)
+                print('dy_l:', dy_l)
+                print('theta_l_pan:', theta_l_pan)
+                print('theta_r_pan:', theta_r_pan)
+                print('theta_tilt:', theta_tilt)
+                print('--------------')
+                # rospy.loginfo(self.calibration.buffer)
             
             # Movement
-            # self.move((theta_l_pan, theta_r_pan, theta_tilt))
+            self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
             self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
