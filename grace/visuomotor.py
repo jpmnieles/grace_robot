@@ -210,15 +210,6 @@ class VisuoMotorNode(object):
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
-        # self.left_eye_motor_sub = message_filters.Subscriber("/motor_state/left_eye_motor", Float32)
-        # self.right_eye_motor_sub = message_filters.Subscriber("/motor_state/right_eye_motor", Float32)
-        # self.tilt_eye_motors_sub = message_filters.Subscriber("/motor_state/tilt_eyes_motor", Float32)
-        # self.ats_motors = message_filters.ApproximateTimeSynchronizer([self.left_eye_motor_sub, 
-        #                                                                self.right_eye_motor_sub,
-        #                                                                self.tilt_eye_motors_sub], 
-        #                                                                queue_size=1, slop=0.01,
-        #                                                                allow_headerless=True)
-        # self.ats_motors.registerCallback(self.motor_states_callback)
         self.motors_sub = rospy.Subscriber('/motor_states', Float32, self.motor_states_callback)
         time.sleep(1)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
@@ -231,42 +222,43 @@ class VisuoMotorNode(object):
         self.rt_l_display_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
         self.rt_r_display_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
         self.motor_display_pub = rospy.Publisher('/eyes/image_processed', Image, queue_size=1)
-        self.frame_trigger = 6  # 5.05 fps = 1/(6*0.033) ; given frame_count = 6
-        self.frame_ctr = 0
+        self.frame_stamp_tminus1 = rospy.Time.now()
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg):
-        # Initialization
-        dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
-        theta_l_pan, theta_r_pan = None, None
-        theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
-        
-        # Frame Counter
-        self.frame_ctr += 1
+        # Motor Trigger Sync (3.33 FPS or 299.99 ms)
+        max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp)
+        elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
+        if elapsed_time > 283e-3:
+            rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+            self.frame_stamp_tminus1 = max_stamp
 
-        # Conversion of ROS Message
-        self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
-        self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
-        # print(left_img_msg.header, right_img_msg.header)
-        
-        # Face Detection
-        self.attention.register_imgs(self.left_img, self.right_img)
-        self.attention.detect_people(self.left_img, self.right_img)
+            # Initialization
+            dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
+            theta_l_pan, theta_r_pan = None, None
+            theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
 
-        # Attention
-        id = 0  # Person ID
-        if len(self.attention.l_detections) > 0:
-            dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
-            self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
-        if len(self.attention.r_detections) > 0:
-            dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
-            self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
+            # Conversion of ROS Message
+            self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
+            self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
+            # print(left_img_msg.header, right_img_msg.header)
         
-        # Output Display 1
-        self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
-        self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
+            # Face Detection
+            self.attention.register_imgs(self.left_img, self.right_img)
+            self.attention.detect_people(self.left_img, self.right_img)
+
+            # Attention
+            id = 0  # Person ID
+            if len(self.attention.l_detections) > 0:
+                dx_l, dy_l = self.attention.get_pixel_target(id, 'left_eye')
+                self.left_img = self.attention.visualize_target(dx_l, dy_l, self.left_img, id, 'left_eye')
+            if len(self.attention.r_detections) > 0:
+                dx_r, dy_r = self.attention.get_pixel_target(id, 'right_eye')
+                self.right_img = self.attention.visualize_target(dx_r, dy_r, self.right_img, id, 'right_eye')
+            
+            # Output Display 1
+            self.rt_l_display_pub.publish(self.bridge.cv2_to_imgmsg(self.left_img, encoding="bgr8"))
+            self.rt_r_display_pub.publish(self.bridge.cv2_to_imgmsg(self.right_img, encoding="bgr8"))
         
-        # Motor Trigger
-        if self.frame_ctr == self.frame_trigger:
             # Get Motor State
             # self.calibration.store_latest_state(self._motor_state)
             
@@ -284,9 +276,6 @@ class VisuoMotorNode(object):
 
             # Output Display 2
             self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
-
-            # Reset Frame Counter
-            self.frame_ctr = 0
 
     def motor_states_callback(self, msg):
         self._motor_state = {
