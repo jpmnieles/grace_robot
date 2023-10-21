@@ -205,13 +205,19 @@ class VisuoMotorNode(object):
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
-        # self._motor_state = [None]*self.num_names
-        # self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
+
+        self.frame_stamp_tminus1 = rospy.Time.now()
+        self.motor_stamp_tminus1 = rospy.Time.now()
+
+
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
         self.motors_sub = rospy.Subscriber('/motor_states', Float32, self.motor_states_callback)
         time.sleep(1)
+
+        # self._motor_state = [None]*self.num_names
+        self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
@@ -222,14 +228,42 @@ class VisuoMotorNode(object):
         self.rt_l_display_pub = rospy.Publisher('/left_eye/image_processed', Image, queue_size=1)
         self.rt_r_display_pub = rospy.Publisher('/right_eye/image_processed', Image, queue_size=1)
         self.motor_display_pub = rospy.Publisher('/eyes/image_processed', Image, queue_size=1)
-        self.frame_stamp_tminus1 = rospy.Time.now()
+
+
+    def _capture_state(self, msg):
+        """Callback for capturing motor state
+        """
+        curr_stamp = rospy.Time.now()
+        eye_motors_list = []
+        temp_name_list= []
+        self._msg = msg
+        for x in msg.motor_states:
+            temp_name_list.append(x.name)
+            for i, name in enumerate(self.names):
+                if x.name == name:
+                    eye_motors_list.append(name)
+                    # self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
+                    # self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
+        if len(eye_motors_list) == 3:
+            rospy.loginfo('Complete')
+        else:
+            rospy.loginfo('Incomplete')
+        
+        rospy.loginfo(str(eye_motors_list))
+        rospy.loginfo(str(temp_name_list))
+        
+        elapsed_time = (curr_stamp - self.motor_stamp_tminus1).to_sec()
+        rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+        self.motor_stamp_tminus1 = curr_stamp
+        rospy.loginfo('-----------')
+
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
         if elapsed_time > 283e-3:
-            rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+            # rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
 
             # Initialization
