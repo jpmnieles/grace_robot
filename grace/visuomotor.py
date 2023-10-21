@@ -237,20 +237,20 @@ class VisuoMotorNode(object):
         eye_motors_list = []
         temp_name_list= []
         self._msg = msg
-        for x in msg.motor_states:
-            temp_name_list.append(x.name)
-            for i, name in enumerate(self.names):
-                if x.name == name:
-                    eye_motors_list.append(name)
-                    # self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
-                    # self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
+        for idx, x in enumerate(msg.motor_states):
+            # temp_name_list.append(x.name)
+            if x.name in self.names:
+                eye_motors_list.append(idx)
         if len(eye_motors_list) == 3:
             rospy.loginfo('Complete')
+            rospy.loginfo(msg.motor_states[eye_motors_list[0]])
+            rospy.loginfo(msg.motor_states[eye_motors_list[1]])
+            rospy.loginfo(msg.motor_states[eye_motors_list[2]])
         else:
             rospy.loginfo('Incomplete')
         
-        rospy.loginfo(str(eye_motors_list))
-        rospy.loginfo(str(temp_name_list))
+        # rospy.loginfo(str(eye_motors_list))
+        # rospy.loginfo(str(temp_name_list))
         
         elapsed_time = (curr_stamp - self.motor_stamp_tminus1).to_sec()
         rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
