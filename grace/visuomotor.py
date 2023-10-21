@@ -222,7 +222,7 @@ class VisuoMotorNode(object):
         self.motors_sub = rospy.Subscriber('/motor_states', Float32, self.motor_states_callback)
         time.sleep(1)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
-        self.right_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
+        self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub], queue_size=1, slop=0.015)
         self.ats.registerCallback(self.eye_imgs_callback)
 
@@ -268,14 +268,14 @@ class VisuoMotorNode(object):
         # Motor Trigger
         if self.frame_ctr == self.frame_trigger:
             # Get Motor State
-            self.calibration.store_latest_state(self._motor_state)
+            # self.calibration.store_latest_state(self._motor_state)
             
             # Calibration Algorithm
             theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
             theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
             theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
             self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-            self.move((theta_l_pan, theta_r_pan, theta_tilt))
+            # self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
             self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
