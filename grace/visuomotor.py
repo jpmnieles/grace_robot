@@ -30,34 +30,44 @@ class BaselineCalibration(object):
     init_buffer = {
         't-1': {
             'cmd': {
-                'EyeTurnLeft': 0.0,
-                'EyeTurnRight': 0.0,
-                'EyesUpDown': 0.0
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
             },
             'state': {
-                'EyeTurnLeft': 0.0,
-                'EyeTurnRight': 0.0,
-                'EyesUpDown': 0.0
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'hidden': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
             },
         },
         't': {
             'cmd': {
-                'EyeTurnLeft': 0.0,
-                'EyeTurnRight': 0.0,
-                'EyesUpDown': 0.0
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
             },
             'state': {
-                'EyeTurnLeft': 0.0,
-                'EyeTurnRight': 0.0,
-                'EyesUpDown': 0.0
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'hidden': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
             },
         },
         't+1': {
             'cmd': {
-                'EyeTurnLeft': 0.0,
-                'EyeTurnRight': 0.0,
-                'EyesUpDown': 0.0
-            },
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            }
         }
     }
 
@@ -73,8 +83,8 @@ class BaselineCalibration(object):
             self.buffer = self.init_buffer.copy()
 
     def store_latest_state(self, latest_state):
-        self.buffer['t']['cmd'] = self.buffer['t+1']['cmd']
-        self.buffer['t-1'] = self.buffer['t']
+        self.buffer['t']['cmd'] = copy.deepcopy(self.buffer['t+1']['cmd'])
+        self.buffer['t-1'] = copy.deepcopy(self.buffer['t'])
 
         self.buffer['t']['state']['EyeTurnLeft'] = latest_state[0]
         self.buffer['t']['state']['EyeTurnRight'] = latest_state[1]
@@ -94,19 +104,76 @@ class BaselineCalibration(object):
         theta = math.degrees(theta)
         return theta
 
+    def compute_left_hidden_state(self):
+        theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        backlash = self.calib_params['left_eye']['backlash']
+        eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnLeft']
+        if eta_tminus1 is None:
+            eta_tminus1 = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        eta_t = eta_tminus1 + max(0, theta_l_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_l_pan)
+        self.buffer['t']['hidden']['EyeTurnLeft'] = eta_t
+        return eta_t
+    
+    def compute_right_hidden_state(self):
+        theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
+        backlash = self.calib_params['right_eye']['backlash']
+        eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnRight']
+        if eta_tminus1 is None:
+            eta_tminus1 = self.buffer['t']['state']['EyeTurnRight']['angle']
+        eta_t = eta_tminus1 + max(0, theta_r_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_r_pan)
+        self.buffer['t']['hidden']['EyeTurnRight'] = eta_t
+        return eta_t
+
     def compute_left_eye_cmd(self, dx, dy):
-        theta_l_pan_tplus1 = (self.buffer['t']['state']['EyeTurnLeft']['angle'] 
-                          + self._px_to_deg_fx(dx, 'left_eye')/self.calib_params['left_eye']['slope'])
-        theta_l_tilt_tplus1 = (self.buffer['t']['state']['EyesUpDown']['angle'] 
-                          + self._px_to_deg_fy(dy, 'left_eye')/self.calib_params['tilt_eyes']['slope'])
+        theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        slope_l_pan = self.calib_params['left_eye']['slope']
+        theta_l_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
+        slope_l_tilt =  self.calib_params['tilt_eyes']['slope']
+
+        delta_eta_l_pan = self._px_to_deg_fx(dx, 'left_eye')/slope_l_pan
+        delta_eta_l_tilt = self._px_to_deg_fy(dy, 'left_eye')/slope_l_tilt
+
+        if self.en_backlash:
+            eta_l_pan = self.compute_left_hidden_state()
+            backlash = self.calib_params['left_eye']['backlash']
+            
+            if delta_eta_l_pan > 0:
+                theta_l_pan_tplus1 = eta_l_pan + delta_eta_l_pan
+            elif delta_eta_l_pan < 0:
+                theta_l_pan_tplus1 = eta_l_pan - backlash + delta_eta_l_pan
+            else:
+                theta_l_pan_tplus1 = theta_l_pan
+        else:
+            theta_l_pan_tplus1 = theta_l_pan + delta_eta_l_pan
+        theta_l_tilt_tplus1 = theta_l_tilt + delta_eta_l_tilt
         return theta_l_pan_tplus1, theta_l_tilt_tplus1
 
     def compute_right_eye_cmd(self, dx, dy):
-        theta_r_pan_tplus1 = (self.buffer['t']['state']['EyeTurnRight']['angle'] 
-                          + self._px_to_deg_fx(dx, 'right_eye')/self.calib_params['right_eye']['slope'])
-        theta_r_tilt_tplus1  = (self.buffer['t']['state']['EyesUpDown']['angle'] 
-                          + self._px_to_deg_fy(dy, 'right_eye')/self.calib_params['tilt_eyes']['slope'])
+        theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
+        slope_r_pan = self.calib_params['right_eye']['slope']
+        theta_r_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
+        slope_r_tilt =  self.calib_params['tilt_eyes']['slope']
+
+        delta_eta_r_pan = self._px_to_deg_fx(dx, 'right_eye')/slope_r_pan
+        delta_eta_r_tilt = self._px_to_deg_fy(dy, 'right_eye')/slope_r_tilt
+
+        if self.en_backlash:
+            eta_r_pan = self.compute_right_hidden_state()
+            backlash = self.calib_params['right_eye']['backlash']
+            
+            if delta_eta_r_pan > 0:
+                theta_r_pan_tplus1 = eta_r_pan + delta_eta_r_pan
+            elif delta_eta_r_pan < 0:
+                theta_r_pan_tplus1 = eta_r_pan - backlash + delta_eta_r_pan
+            else:
+                theta_r_pan_tplus1 = theta_r_pan
+        else:
+            theta_r_pan_tplus1 = theta_r_pan + delta_eta_r_pan
+        theta_r_tilt_tplus1 = theta_r_tilt + delta_eta_r_tilt
         return theta_r_pan_tplus1, theta_r_tilt_tplus1
+
+    def toggle_backlash(self, en_backlash):
+        self.en_backlash = en_backlash
 
     def compute_tilt_cmd(self, theta_l_tilt, theta_r_tilt, alpha_tilt=0.5):
         """alpha_tilt: percentage of theta right tilt
@@ -217,7 +284,7 @@ class VisuoMotorNode(object):
 
         self.attention = PeopleAttention()
         self.calibration = BaselineCalibration(self.buffer_lock)
-
+        self.calibration.toggle_backlash(True)
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
 
@@ -332,9 +399,16 @@ class VisuoMotorNode(object):
                 print('dy_l:', dy_l)
                 print('dx_r:', dx_l)
                 print('dy_l:', dy_l)
-                print('theta_l_pan:', theta_l_pan)
-                print('theta_r_pan:', theta_r_pan)
-                print('theta_tilt:', theta_tilt)
+                print('theta_l_pan_t:', self.calibration.buffer['t']['state']['EyeTurnLeft']['angle'])
+                print('theta_r_pan_t:', self.calibration.buffer['t']['state']['EyeTurnRight']['angle'])
+                print('theta_tilt_t:', self.calibration.buffer['t']['state']['EyesUpDown']['angle'])
+                print('theta_l_pan_cmd:', theta_l_pan)
+                print('theta_r_pan_cmd:', theta_r_pan)
+                print('theta_tilt:_cmd', theta_tilt)
+                print('eta_tminus1_l_pan:', self.calibration.buffer['t-1']['hidden']['EyeTurnLeft'])
+                print('eta_t_l_pan:', self.calibration.buffer['t']['hidden']['EyeTurnLeft'])
+                print('eta_tminus1_r_pan:', self.calibration.buffer['t-1']['hidden']['EyeTurnRight'])
+                print('eta_t_r_pan:', self.calibration.buffer['t']['hidden']['EyeTurnRight'])
                 print('--------------')
                 # rospy.loginfo(self.calibration.buffer)
             
