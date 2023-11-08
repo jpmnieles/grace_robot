@@ -1,0 +1,16 @@
+﻿Angle,Motor,Value (Deg)
+-26,EyeTurnLeft,-12
+,EyeTurnRight,-9
+,EyesUpDown,-11
+-13,EyeTurnLeft,-6
+,EyeTurnRight,-6
+,EyesUpDown,-11
+0,EyeTurnLeft,2
+,EyeTurnRight,-2
+,EyesUpDown,-11
+13,EyeTurnLeft,9
+,EyeTurnRight,3
+,EyesUpDown,-11
+26,EyeTurnLeft,11
+,EyeTurnRight,7
+,EyesUpDown,-11
