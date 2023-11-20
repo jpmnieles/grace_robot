@@ -1,143 +1,192 @@
 """Module for the Baseline Policy
 """
 
+import os
+import sys
+sys.path.append(os.getcwd())
 
 import math
+import copy
+import threading
+
+from grace.utils import *
 
 
-class PanBacklash(object):
+class BaselineCalibration(object):
+
+    init_buffer = {
+        't-1': {
+            'cmd': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'state': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'hidden': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+        },
+        't': {
+            'cmd': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'state': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+            'hidden': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            },
+        },
+        't+1': {
+            'cmd': {
+                'EyeTurnLeft': None,
+                'EyeTurnRight': None,
+                'EyesUpDown': None
+            }
+        }
+    }
 
 
-    fx = 569.4456315
-    m = 1.6328
-    B = 1.5
-    sigma = (0.1009, 0.8439, 1.057)
+    def __init__(self, lock) -> None:
+        self.lock = lock
+        self.camera_mtx = load_camera_mtx()
+        self.calib_params = load_json('config/calib/calib_params.json')
+        self.reset_buffer()
 
+    def reset_buffer(self):
+        with self.lock:
+            self.buffer = self.init_buffer.copy()
 
-    def __init__(self, m=None, B=None, sigma:tuple=None, phi=None) -> None:
-        if m is not None:
-            self.m = m  # Slope
-        if B is not None:
-            self.B = B  # Backlash value
-        if sigma is not None:
-            self.sigma = sigma  # Overshoot parameters
+    def store_latest_state(self, latest_state):
+        self.buffer['t']['cmd'] = copy.deepcopy(self.buffer['t+1']['cmd'])
+        self.buffer['t-1'] = copy.deepcopy(self.buffer['t'])
 
-        self.theta = 0   # Motor position
-        if phi is None:
-            self.phi = 0.4  # Eye position  # TODO: Check if 0.4 is okay
-        else:
-            if self._check_validity(self.theta, phi):
-                self.phi = phi
+        self.buffer['t']['state']['EyeTurnLeft'] = latest_state[0]
+        self.buffer['t']['state']['EyeTurnRight'] = latest_state[1]
+        self.buffer['t']['state']['EyesUpDown'] = latest_state[2]
 
+    def _px_to_deg_fx(self, x, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        theta = math.atan(x/self.camera_mtx[eye]['fx'])
+        theta = math.degrees(theta)
+        return theta
 
-    def _check_validity(self, theta, phi):
-        if (theta >= phi/self.m) or (theta <= (phi-self.B)/self.m):
-            raise ValueError("Theta must be inside the range of Phi and (Phi-B)")
-        else:
-            return True
+    def _px_to_deg_fy(self, y, eye:str):
+        """eye (str): select from ['left_eye', 'right_eye']
+        """
+        theta = math.atan(y/self.camera_mtx[eye]['fy'])
+        theta = math.degrees(theta)
+        return theta
 
-
-    def calc_overshoot(self, x):
-        if x != 0:
-            o = min(self.sigma[0]*abs(x)+self.sigma[1], self.sigma[2])/self.m
-        else:
-            o = 0
-        return o
+    def compute_left_hidden_state(self):
+        theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        backlash = self.calib_params['left_eye']['backlash']
+        eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnLeft']
+        if eta_tminus1 is None:
+            eta_tminus1 = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        eta_t = eta_tminus1 + max(0, theta_l_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_l_pan)
+        self.buffer['t']['hidden']['EyeTurnLeft'] = eta_t
+        return eta_t
     
+    def compute_right_hidden_state(self):
+        theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
+        backlash = self.calib_params['right_eye']['backlash']
+        eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnRight']
+        if eta_tminus1 is None:
+            eta_tminus1 = self.buffer['t']['state']['EyeTurnRight']['angle']
+        eta_t = eta_tminus1 + max(0, theta_r_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_r_pan)
+        self.buffer['t']['hidden']['EyeTurnRight'] = eta_t
+        return eta_t
 
-    def calc_cmd(self, delta_x, theta=None, phi=None):
-        if phi is not None:
-            self.phi = phi
-        # self._check_validity(theta, self.phi)
-        
-        # Calculations
-        xi = self.phi/self.m
-        delta_xi = math.degrees(math.atan(delta_x/self.fx))/self.m
-        tmp = xi + delta_xi
-        o = self.calc_overshoot(x=delta_xi)
-        
-        # Piecewise linear function
-        if delta_xi == 0:
-            theta_new = theta
-        elif delta_xi > 0:
-            theta_new = tmp - o
-        elif delta_xi < 0:
-            theta_new = tmp + o - self.B
+    def compute_left_eye_cmd(self, dx, dy):
+        theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        slope_l_pan = self.calib_params['left_eye']['slope']
+        theta_l_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
+        slope_l_tilt =  self.calib_params['tilt_eyes']['slope']
+
+        delta_eta_l_pan = self._px_to_deg_fx(dx, 'left_eye')/slope_l_pan
+        delta_eta_l_tilt = self._px_to_deg_fy(dy, 'left_eye')/slope_l_tilt
+
+        if self.en_backlash:
+            eta_l_pan = self.compute_left_hidden_state()
+            backlash = self.calib_params['left_eye']['backlash']
             
-        # Forward Model Update
-        delta_phi = self.m*(max(0, theta_new-xi+o) - max(0, xi-theta_new-self.B+o))
-        phi_new = self.phi + delta_phi
-
-        # Variable Update
-        self.theta = theta_new
-        self.phi = phi_new
-        
-        return theta_new, phi_new
-
-    @property
-    def cmd(self):
-        return self.theta
-    
-
-    @property
-    def position(self):
-        return self.phi
-
-
-class TiltPolicy(object):
-
-
-    fy = 571.54490033
-    m = 0.3910
-
-
-    def __init__(self, m=None) -> None:
-        if m is not None:
-            self.m = m  # Slope
-        self.theta = 0   # Motor position
-        self.phi = 0  # Eye Position
-
-
-    def calc_cmd(self, delta_y, theta=None):      
-        # Calculations
-        if theta is None:
-            xi = self.phi/self.m
+            if delta_eta_l_pan > 1.3:
+                theta_l_pan_tplus1 = eta_l_pan + delta_eta_l_pan
+            elif delta_eta_l_pan < -1.3:
+                theta_l_pan_tplus1 = eta_l_pan - backlash + delta_eta_l_pan
+            elif delta_eta_l_pan == 0:
+                theta_l_pan_tplus1 = theta_l_pan
+            else:
+                theta_l_pan_tplus1 = theta_l_pan + delta_eta_l_pan
         else:
-            xi = theta
-            self.phi = self.m * theta
-        delta_xi = math.degrees(math.atan(delta_y/self.fy))/self.m
-        theta_new = xi + delta_xi
-        phi_new = self.m*theta_new
+            theta_l_pan_tplus1 = theta_l_pan + delta_eta_l_pan
+        theta_l_tilt_tplus1 = theta_l_tilt + delta_eta_l_tilt
+        return theta_l_pan_tplus1, theta_l_tilt_tplus1
 
-        # Variable Update
-        self.theta = theta_new
-        self.phi = phi_new
-        
-        return theta_new, phi_new
+    def compute_right_eye_cmd(self, dx, dy):
+        theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
+        slope_r_pan = self.calib_params['right_eye']['slope']
+        theta_r_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
+        slope_r_tilt =  self.calib_params['tilt_eyes']['slope']
 
-    @property
-    def cmd(self):
-        return self.theta
+        delta_eta_r_pan = self._px_to_deg_fx(dx, 'right_eye')/slope_r_pan
+        delta_eta_r_tilt = self._px_to_deg_fy(dy, 'right_eye')/slope_r_tilt
+
+        if self.en_backlash:
+            eta_r_pan = self.compute_right_hidden_state()
+            backlash = self.calib_params['right_eye']['backlash']
+            
+            if delta_eta_r_pan > 1.3:
+                theta_r_pan_tplus1 = eta_r_pan + delta_eta_r_pan
+            elif delta_eta_r_pan < -1.3:
+                theta_r_pan_tplus1 = eta_r_pan - backlash + delta_eta_r_pan
+            elif delta_eta_r_pan == 0:
+                theta_r_pan_tplus1 = theta_r_pan
+            else:
+                theta_r_pan_tplus1 = theta_r_pan + delta_eta_r_pan
+        else:
+            theta_r_pan_tplus1 = theta_r_pan + delta_eta_r_pan
+        theta_r_tilt_tplus1 = theta_r_tilt + delta_eta_r_tilt
+        return theta_r_pan_tplus1, theta_r_tilt_tplus1
+
+    def toggle_backlash(self, en_backlash):
+        self.en_backlash = en_backlash
+
+    def compute_tilt_cmd(self, theta_l_tilt, theta_r_tilt, alpha_tilt=0.5):
+        """alpha_tilt: percentage of theta right tilt
+        """
+        if theta_l_tilt is None:
+            theta_tilt = theta_r_tilt
+        elif theta_r_tilt is None:
+            theta_tilt = theta_l_tilt
+        elif theta_l_tilt is None and theta_r_tilt is None:
+            theta_tilt = None
+        else:
+            theta_tilt = (1-alpha_tilt)*theta_l_tilt + alpha_tilt*theta_r_tilt
+        return theta_tilt
     
+    def store_cmd(self, theta_l_pan, theta_r_pan, theta_tilt):
+        if theta_l_pan is None:
+            theta_l_pan = self.buffer['t']['state']['EyeTurnLeft']['angle']
+        if theta_r_pan is None:
+            theta_r_pan = self.buffer['t']['state']['EyeTurnRight']['angle']
+        if theta_tilt is None:
+            theta_tilt = self.buffer['t']['state']['EyesUpDown']['angle']
 
-    @property
-    def position(self):
-        return self.phi
-
-
-if __name__ == "__main__":
-    # Constants
-    m = 1.21  # slope
-    o_1 = 0.8816  # positive swing overshoot
-    o_2 = 0.6706  # negative swing overshoot
-    o = 0.7761
-    b_1 = 0.4551  # right backlash
-    b_2 = 4.9257  # left backlash
-    B = 5.3808
-
-
-    pan_backlash = PanBacklash(m=m, B=B, sigma=(o,o))
-
-    pan_backlash.calc_cmd(delta_x=3.5480, theta=-7.2949, phi=-2.9900)
-    print(pan_backlash.cmd)
-    print(pan_backlash.position)
+        self.buffer['t+1']['cmd']['EyeTurnLeft'] = theta_l_pan
+        self.buffer['t+1']['cmd']['EyeTurnRight'] = theta_r_pan
+        self.buffer['t+1']['cmd']['EyesUpDown'] = theta_tilt
