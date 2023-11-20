@@ -75,15 +75,15 @@ class ROSMotorClient(object):
         int_min = motors_dict[motor]['motor_min']
         int_init = motors_dict[motor]['init']
         int_max = motors_dict[motor]['motor_max']
-        deg_min = motor_int_to_angle(motor, int_min, self.degrees)
-        deg_init = motor_int_to_angle(motor, int_init, self.degrees)
-        deg_max = motor_int_to_angle(motor, int_max, self.degrees)
+        angle_min = motor_int_to_angle(motor, int_min, self.degrees)
+        angle_init = motor_int_to_angle(motor, int_init, self.degrees)
+        angle_max = motor_int_to_angle(motor, int_max, self.degrees)
         limits = {'int_min': int_min, 
                   'int_init': int_init, 
                   'int_max': int_max,
-                  'deg_min': deg_min, 
-                  'deg_init': deg_init, 
-                  'deg_max': deg_max}
+                  'angle_min': angle_min, 
+                  'angle_init': angle_init, 
+                  'angle_max': angle_max}
         return limits
 
     def set_motor_names(self, names: list):
@@ -111,15 +111,14 @@ class ROSMotorClient(object):
         self.motor_pub.publish(TargetPosture(**args))
 
     def _check_limits(self, name, value):
-        if value < self._motor_limits[name]['deg_min']:
-            value = self._motor_limits[name]['deg_min']
-        elif value > self._motor_limits[name]['deg_max']:
-            value = self._motor_limits[name]['deg_max']
+        if value < self._motor_limits[name]['angle_min']:
+            value = self._motor_limits[name]['angle_min']
+        elif value > self._motor_limits[name]['angle_max']:
+            value = self._motor_limits[name]['angle_max']
         return value     
 
     def move(self, values):
         values = [self._check_limits(self.names[i],x) for i,x in enumerate(values)]
-        targets = [self._convert_to_motor_int(self.names[i],x) for i,x in enumerate(values)]
         if self.degrees:
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
@@ -132,15 +131,15 @@ class ROSMotorClient(object):
         final_state = self._motor_state
         return final_state
     
-    def _check_target(self, targets):
-        confirmed = False
-        for i in range(self.num_names):
-            timestamp = self._motor_state[i]["timestamp"] 
-            position = self._motor_state[i]["position"] 
-            confirmed |= position > (targets[i]+1) or position  < (targets[i]-1)
-            if self.debug:
-                print('[DEBUG] timestamp:', timestamp, 'name:', self.names[i], 'position:', position, 'target:', targets[i], 'confirmed:',confirmed)
-        return confirmed
+    def _compute_delay(self, cmd, tol=0.1):
+        # Units is degrees
+        if cmd <= 20-tol:
+            delay = 165e-3
+        elif (cmd > 20-tol) and (cmd <= 45-tol):
+            delay = 198e-3
+        elif cmd > 45-tol:
+            delay = 231e-3
+        return delay
     
     def get_elapsed_time(self, start_state, end_state):
         start_timestamp = start_state[0]["timestamp"]
