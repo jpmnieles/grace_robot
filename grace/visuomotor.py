@@ -137,12 +137,14 @@ class BaselineCalibration(object):
             eta_l_pan = self.compute_left_hidden_state()
             backlash = self.calib_params['left_eye']['backlash']
             
-            if delta_eta_l_pan > 0:
+            if delta_eta_l_pan > 1.3:
                 theta_l_pan_tplus1 = eta_l_pan + delta_eta_l_pan
-            elif delta_eta_l_pan < 0:
+            elif delta_eta_l_pan < -1.3:
                 theta_l_pan_tplus1 = eta_l_pan - backlash + delta_eta_l_pan
-            else:
+            elif delta_eta_l_pan == 0:
                 theta_l_pan_tplus1 = theta_l_pan
+            else:
+                theta_l_pan_tplus1 = theta_l_pan + delta_eta_l_pan
         else:
             theta_l_pan_tplus1 = theta_l_pan + delta_eta_l_pan
         theta_l_tilt_tplus1 = theta_l_tilt + delta_eta_l_tilt
@@ -161,12 +163,14 @@ class BaselineCalibration(object):
             eta_r_pan = self.compute_right_hidden_state()
             backlash = self.calib_params['right_eye']['backlash']
             
-            if delta_eta_r_pan > 0:
+            if delta_eta_r_pan > 1.3:
                 theta_r_pan_tplus1 = eta_r_pan + delta_eta_r_pan
-            elif delta_eta_r_pan < 0:
+            elif delta_eta_r_pan < -1.3:
                 theta_r_pan_tplus1 = eta_r_pan - backlash + delta_eta_r_pan
-            else:
+            elif delta_eta_r_pan == 0:
                 theta_r_pan_tplus1 = theta_r_pan
+            else:
+                theta_r_pan_tplus1 = theta_r_pan + delta_eta_r_pan
         else:
             theta_r_pan_tplus1 = theta_r_pan + delta_eta_r_pan
         theta_r_tilt_tplus1 = theta_r_tilt + delta_eta_r_tilt
