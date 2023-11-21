@@ -4,6 +4,7 @@ import math
 import time
 import yaml
 from datetime import datetime
+import threading
 
 import rospy
 from hr_msgs.msg import TargetPosture, MotorStateList
@@ -18,6 +19,7 @@ class ROSMotorClient(object):
     
 
     def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=False):
+        self.motor_lock = threading.Lock()
         self.debug = debug
         self.degrees = degrees
         rospy.init_node('hr_motor_client')
@@ -48,12 +50,13 @@ class ROSMotorClient(object):
     def _capture_state(self, msg):
         """Callback for capturing motor state
         """
-        self._msg = msg
-        for x in msg.motor_states:
-            for i, name in enumerate(self.names):
-                if x.name == name:
-                    self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
-                    self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
+        with self.motor_lock:
+            self._msg = msg
+            for x in msg.motor_states:
+                for i, name in enumerate(self.names):
+                    if x.name == name:
+                        self._motor_state[i] = message_converter.convert_ros_message_to_dictionary(x)
+                        self._motor_state[i]['angle'] = self._convert_to_angle(name, x.position)
     
     def _convert_to_angle(self, motor, position):
         if self.degrees:
@@ -93,7 +96,9 @@ class ROSMotorClient(object):
 
     @property
     def state(self):
-        return self._motor_state.copy()
+        with self.motor_lock:
+            state = self._motor_state.copy()
+        return state
     
     @property
     def angle_state(self):
