@@ -123,11 +123,6 @@ class ROSMotorClient(object):
             values = [math.radians(x) for x in values]
         args = {"names":self.names, "values":values}
         self.motor_pub.publish(TargetPosture(**args))
-        # while self._check_target(targets):
-        #     time.sleep(0.02)
-        #     if self.debug:
-        #         print("[DEBUG] Target not yet reached")
-        #     pass
         final_state = self._motor_state
         return final_state
     
@@ -166,7 +161,9 @@ if __name__ == '__main__':
     # Move with Target
     values = eval(input("Enter the motor commands in list:"))
     start_state = client.state
-    end_state = client.move(values)
+    client.move(values)
+    time.sleep(0.3333)
+    end_state = client.state
     elapsed_time = client.get_elapsed_time(start_state, end_state)
     print(f"Move Elapsed Time: {elapsed_time:.8f} sec")
     print(end_state)
