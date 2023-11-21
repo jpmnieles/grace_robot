@@ -55,7 +55,8 @@ class GraceKeyboardCtrl(object):
             self._cmd[2] += 0.4395 # tilt eyes go left
         elif (k==107):  # letter k
             self._cmd[2] -= 0.4395 # tilt eyes go right
-        
+        elif (k==49):  # number 1
+            key = 49  # saving an image
         elif (k==27):
             sys.exit("Exited Progam")
         return key
@@ -77,9 +78,9 @@ if __name__ == "__main__":
     time.sleep(0.3333)
 
     while not rospy.is_shutdown():
-        # print(client.state)
-        key_ctrl.get_keys()
+        key = key_ctrl.get_keys()
         print(key_ctrl.cmd)
         client.move(key_ctrl.cmd)
         rate.sleep()
-    
+        state = client.state
+        print(state)
