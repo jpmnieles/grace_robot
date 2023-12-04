@@ -11,6 +11,7 @@ import getch
 
 import rospy
 
+from grace.utils import load_json
 from grace.camera import LeftEyeCapture, RightEyeCapture
 from grace.control import ROSMotorClient
 
@@ -70,6 +71,58 @@ class GraceKeyboardCtrl(object):
 
 if __name__ == "__main__":
     # Initialization
+    save_ctr = 0
+    calib_params = load_json('config/calib/calib_params.json')
+    m_list = [calib_params['left_eye']['slope'], calib_params['right_eye']['slope'], calib_params['tilt_eyes']['slope']]
+    
+    date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    results_dir = 'results/' + date_str 
+    try:
+        os.makedirs(results_dir, exist_ok = True)
+        print("Directory '%s' created successfully:" %results_dir)
+    except OSError as error:
+        print("Directory '%s' can not be created")
+
+    naming_dict = {0:-20, 1:-10, 2:0, 3:10, 4:20}
+    save_dict = {
+        -20: {
+            'state': [],
+            'motor_position': [],
+            'eye_position': [],
+            'left_img': None,
+            'right_img': None,
+        },
+        -10: {
+            'state': [],
+            'motor_position': [],
+            'eye_position': [],
+            'left_img': None,
+            'right_img': None,
+        },
+        0: {
+            'state': [],
+            'motor_position': [],
+            'eye_position': [],
+            'left_img': None,
+            'right_img': None,
+        },
+        10: {
+            'state': [],
+            'motor_position': [],
+            'eye_position': [],
+            'left_img': None,
+            'right_img': None,
+        },
+        20: {
+            'state': [],
+            'motor_position': [],
+            'eye_position': [],
+            'left_img': None,
+            'right_img': None,
+        },  
+    }
+
+    # Instantiation
     left_cam = LeftEyeCapture()
     right_cam = RightEyeCapture()
     client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=False)
@@ -104,17 +157,37 @@ if __name__ == "__main__":
             rate.sleep()
             print(state)
         elif key == 49:  # Press number '1' to save
+            angle = naming_dict[save_ctr]
+            state = client.state
             l_frame = left_cam.frame
             r_frame = right_cam.frame
             print("Left Eye Camera Shape:", l_frame.shape)
             print("Right Eye Camera:", r_frame.shape)
-            date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f") 
-            l_fn_str = 'results/' + date_str + '_left_eye.png'
-            r_fn_str = 'results/' + date_str + '_right_eye.png'
+            time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f") 
+            l_fn_str = os.path.join('results', date_str, str(angle)+'_left_eye.png')
+            r_fn_str = os.path.join('results', date_str, str(angle)+'_right_eye.png')
             cv.imwrite(l_fn_str, l_frame)
             cv.imwrite(r_fn_str, r_frame)
             print("Saving Left Camera Image to: ", l_fn_str)
             print("Saving Right Camera Image to: ", r_fn_str)
+
+            # JSON Save
+            save_dict[angle]['state'] = state
+            motor_position_list = [state[idx]['angle'] for idx in range(client.num_names)]
+            save_dict[angle]['motor_position'] = motor_position_list 
+            eye_position_list = [x*m_list[i] for i,x in enumerate(motor_position_list)]
+            save_dict[angle]['eye_position'] = eye_position_list
+            save_dict[angle]['left_img'] = l_fn_str 
+            save_dict[angle]['right_img'] = r_fn_str
+            save_ctr += 1
+
+            # Program Exit
+            if save_ctr == 5:
+                json_fn = os.path.join('results', date_str,'data.json')
+                with open(json_fn, "w") as file:
+                    json.dump(save_dict, file)
+                
+                sys.exit("Exited Progam")
         else:
             print(key_ctrl.cmd)
             client.move(key_ctrl.cmd)
