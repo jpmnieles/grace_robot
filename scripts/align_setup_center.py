@@ -106,9 +106,18 @@ if __name__ == "__main__":
     left_cam = LeftEyeCapture()
     right_cam = RightEyeCapture()
     alignment = GraceAlign(epsilon=0.05)
+    motor_client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=False)
 
     # Load Camera Matrix
     l_mtx, l_dist, r_mtx, r_dist = alignment.get_camera_mtx("config/camera/camera_mtx.json")
+
+    # Reset
+    motor_client.move([0,0,0])
+    time.sleep(0.3333)
+    motor_client.slow_move(idx=0,position=-8,step_size=0.0879,time_interval=0.015)
+    motor_client.slow_move(idx=0,position=0,step_size=0.0879,time_interval=0.015)
+    motor_client.slow_move(idx=1,position=-8,step_size=0.0879,time_interval=0.015)
+    motor_client.slow_move(idx=1,position=0,step_size=0.0879,time_interval=0.015)
 
     # Loop
     while(1):
@@ -160,6 +169,15 @@ if __name__ == "__main__":
             cv.imwrite(r_fn_str, r_frame)
             print("Saving Left Camera Image to: ", l_fn_str)
             print("Saving Right Camera Image to: ", r_fn_str)
+        elif key == 99:  # letter c
+            """Resets the eye position via slow movements. Press 'c' key
+            """
+            motor_client.move([0,0,0])
+            time.sleep(0.3333)
+            motor_client.slow_move(idx=0,position=-18,step_size=0.0879,time_interval=0.015)
+            motor_client.slow_move(idx=0,position=0,step_size=0.0879,time_interval=0.015)
+            motor_client.slow_move(idx=1,position=-18,step_size=0.0879,time_interval=0.015)
+            motor_client.slow_move(idx=1,position=0,step_size=0.0879,time_interval=0.015)
         elif key == 27:  # Esc
             """Execute end of program. Press 'esc' key to escape program
             """
