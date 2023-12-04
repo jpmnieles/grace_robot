@@ -80,11 +80,16 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         key = key_ctrl.get_keys()
         if key == 49:  # Press number '1' to confirm
-            print('loob')
+            print(key_ctrl.cmd)
+            state = client.state
+            curr_position_list = [state[idx]['angle'] for idx in range(client.num_names)]
             client.slow_move(idx=0,position=-18,step_size=0.0879,time_interval=0.015)
-            client.slow_move(idx=0,position=key_ctrl.cmd[0],step_size=0.0879,time_interval=0.015)
+            client.slow_move(idx=0,position=curr_position_list[0],step_size=0.0879,time_interval=0.015)
             client.slow_move(idx=1,position=-18,step_size=0.0879,time_interval=0.015)
-            client.slow_move(idx=1,position=key_ctrl.cmd[1],step_size=0.0879,time_interval=0.015)
+            client.slow_move(idx=1,position=curr_position_list[1],step_size=0.0879,time_interval=0.015)
+            state = client.state
+            rate.sleep()
+            print(state)
         else:
             print(key_ctrl.cmd)
             client.move(key_ctrl.cmd)
