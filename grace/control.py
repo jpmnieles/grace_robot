@@ -169,7 +169,7 @@ class ROSMotorClient(object):
 if __name__ == '__main__':
 
     # Instantiation
-    client = ROSMotorClient(["EyeTurnLeft", "EyesUpDown"], degrees=True, debug=False)
+    client = ROSMotorClient(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True, debug=False)
 
     # State
     start = time.time()
