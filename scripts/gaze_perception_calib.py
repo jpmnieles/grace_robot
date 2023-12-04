@@ -48,13 +48,13 @@ class GraceKeyboardCtrl(object):
         elif (k==111):  # letter o
             self._cmd[0] -= 0.0879 # left eye go right
         elif (k==119):  # letter w
-            self._cmd[2] += 1 # tilt eyes go left
+            self._cmd[2] += 1 # tilt eyes go up
         elif (k==115):  # letter s
-            self._cmd[2] -= 1 # tilt eyes go right
+            self._cmd[2] -= 1 # tilt eyes go down
         elif (k==105):  # letter i
-            self._cmd[2] += 0.4395 # tilt eyes go left
+            self._cmd[2] += 0.4395 # tilt eyes go up
         elif (k==107):  # letter k
-            self._cmd[2] -= 0.4395 # tilt eyes go right
+            self._cmd[2] -= 0.4395 # tilt eyes go down
         elif (k==49):  # number 1
             key = 49  # saving an image
         elif (k==27):
