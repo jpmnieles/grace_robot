@@ -55,8 +55,10 @@ class GraceKeyboardCtrl(object):
             self._cmd[2] += 0.4395 # tilt eyes go up
         elif (k==107):  # letter k
             self._cmd[2] -= 0.4395 # tilt eyes go down
+        elif (k==99):  # letter c
+            key = 99  # slow confirming position
         elif (k==49):  # number 1
-            key = 49  # confirming position
+            key = 49  # Capture images
         elif (k==27):
             sys.exit("Exited Progam")
         return key
@@ -78,8 +80,19 @@ if __name__ == "__main__":
     time.sleep(0.3333)
 
     while not rospy.is_shutdown():
+
+        try:
+            l_img = left_cam.frame
+        except:
+            pass
+        
+        try:
+            r_img = right_cam.frame
+        except:
+            pass   
+
         key = key_ctrl.get_keys()
-        if key == 49:  # Press number '1' to confirm
+        if key == 99:  # Press letter 'c' to confirm
             print(key_ctrl.cmd)
             state = client.state
             curr_position_list = [state[idx]['angle'] for idx in range(client.num_names)]
@@ -90,6 +103,18 @@ if __name__ == "__main__":
             state = client.state
             rate.sleep()
             print(state)
+        elif key == 49:  # Press number '1' to save
+            l_frame = left_cam.frame
+            r_frame = right_cam.frame
+            print("Left Eye Camera Shape:", l_frame.shape)
+            print("Right Eye Camera:", r_frame.shape)
+            date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f") 
+            l_fn_str = 'results/' + date_str + '_left_eye.png'
+            r_fn_str = 'results/' + date_str + '_right_eye.png'
+            cv.imwrite(l_fn_str, l_frame)
+            cv.imwrite(r_fn_str, r_frame)
+            print("Saving Left Camera Image to: ", l_fn_str)
+            print("Saving Right Camera Image to: ", r_fn_str)
         else:
             print(key_ctrl.cmd)
             client.move(key_ctrl.cmd)
