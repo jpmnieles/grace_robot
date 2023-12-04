@@ -146,6 +146,21 @@ class ROSMotorClient(object):
         end_timestamp = end_state[0]["timestamp"]
         elapsed_time = (datetime.fromtimestamp(end_timestamp)-datetime.fromtimestamp(start_timestamp)).total_seconds()
         return elapsed_time
+    
+    def slow_move(self, idx, position, step_size, time_interval, num_repeat=1):  # TODO: Only limited to only 1 motor only. Extend to multimotor
+        state = self.state
+        curr_position_list = [state[idx]['angle'] for idx in range(self.num_names)]
+        curr_position = curr_position_list[idx]
+        if position > curr_position:
+            sign = 1
+        else:
+            sign = -1
+        target_wave = generate_target_wave(target_amp=position, init_amp=curr_position, step_size=sign*step_size, num_cycles=num_repeat)
+        for cmd in target_wave:
+            time.sleep(time_interval)
+            curr_position_list[idx] = cmd
+            self.move(curr_position_list)
+        time.sleep(0.3333)
 
     def exit(self):
         rospy.signal_shutdown('End of Node')
@@ -173,3 +188,7 @@ if __name__ == '__main__':
     print(f"Move Elapsed Time: {elapsed_time:.8f} sec")
     print(end_state)
     print("State (deg):", client.angle_state)
+
+    # Slow Move Target
+    value = eval(input("Enter the motor position: "))
+    client.slow_move(idx=0,position=value,step_size=0.0879,time_interval=0.015)

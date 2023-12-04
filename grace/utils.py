@@ -4,7 +4,21 @@ import yaml
 import math
 import cv2
 import json
+import numpy as np
 
+
+def generate_target_wave(target_amp, init_amp, step_size, num_cycles):
+    int_target_amp = round(target_amp/step_size)
+    int_init_amp = round(init_amp/step_size)
+    int_sweep = list(range(int_init_amp, int_target_amp+1))
+    addtl_sweep = list(range(int_target_amp-1, int_init_amp-1, -1)) + list(range(int_init_amp+1, int_target_amp+1))
+
+    triangle_wave = int_sweep
+    if num_cycles>1:
+        for _ in range(num_cycles-1):
+            triangle_wave += addtl_sweep
+    target_wave = [step_size*x for x in triangle_wave]
+    return np.array(target_wave)
 
 def load_json(filename: str):
     # Get the current file's directory
