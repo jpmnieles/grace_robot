@@ -60,6 +60,8 @@ class GraceKeyboardCtrl(object):
             key = 99  # slow confirming position
         elif (k==49):  # number 1
             key = 49  # Capture images
+        elif (k==50):  # number 2
+            key = 50  # Capture chessboard
         elif (k==27):
             sys.exit("Exited Progam")
         return key
@@ -187,6 +189,24 @@ if __name__ == "__main__":
                 with open(json_fn, "w") as file:
                     json.dump(save_dict, file)
                 
+                sys.exit("Exited Progam")
+        elif key == 50:  # Press number '2' to save chessboard image
+            angle = naming_dict[save_ctr]
+            l_frame = left_cam.frame
+            r_frame = right_cam.frame
+            print("Left Eye Camera Shape:", l_frame.shape)
+            print("Right Eye Camera:", r_frame.shape)
+            time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f") 
+            l_fn_str = os.path.join('results', date_str, str(angle)+'_chess_left_eye.png')
+            r_fn_str = os.path.join('results', date_str, str(angle)+'_chess_right_eye.png')
+            cv.imwrite(l_fn_str, l_frame)
+            cv.imwrite(r_fn_str, r_frame)
+            print("Saving Left Camera Image to: ", l_fn_str)
+            print("Saving Right Camera Image to: ", r_fn_str)
+            save_ctr += 1
+
+            # Program Exit
+            if save_ctr == 5:
                 sys.exit("Exited Progam")
         else:
             print(key_ctrl.cmd)
