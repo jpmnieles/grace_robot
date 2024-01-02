@@ -92,7 +92,6 @@ class ChessboardAttention(object):
 
     def process_img(self, chess_idx, img, camera):
         px = (None,None)
-        chess_idx = 21
 
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
