@@ -71,18 +71,7 @@ class PeopleAttention(object):
 class ChessboardAttention(object):
 
     def __init__(self) -> None:
-        self.get_camera_mtx()
-
-    def get_camera_mtx(self, filename='config/camera/camera_mtx.json'):
-        with open(filename, 'r') as stream:
-            data = json.load(stream)
-            self.l_mtx = np.array(data['left_eye']['camera_matrix'])
-            self.l_dist = np.array(data['left_eye']['distortion_coefficients'])
-            self.r_mtx = np.array(data['right_eye']['camera_matrix'])
-            self.r_dist = np.array(data['right_eye']['distortion_coefficients'])
-            self.c_mtx = np.array(data['chest_cam']['camera_matrix'])
-            self.c_dist = np.array(data['chest_cam']['distortion_coefficients'])
-            return self.l_mtx, self.l_dist, self.r_mtx, self.r_dist, self.c_mtx, self.c_dist
+        self.camera_mtx = load_camera_mtx()
 
     def visualize_chess_idx(self, chess_idx, chess_list, img):
         x, y = chess_list[chess_idx]
@@ -90,7 +79,7 @@ class ChessboardAttention(object):
                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
         return img
 
-    def process_img(self, chess_idx, img, camera):
+    def process_img(self, chess_idx, img):
         px = (None,None)
 
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
