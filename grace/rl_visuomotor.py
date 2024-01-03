@@ -53,7 +53,7 @@ class VisuoMotorNode(object):
 
         self.attention = ChessboardAttention()
         self.calibration = BaselineCalibration(self.buffer_lock)  # RL Model
-        # self.calibration.toggle_backlash(True)
+        self.calibration.toggle_backlash(True)
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
 
@@ -141,53 +141,60 @@ class VisuoMotorNode(object):
             chest_cam_px, chest_img = self.attention.process_img(chess_idx, self.chest_img)
 
             # Calculate Delta between Gaze Center and Pixel Target
-            dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
-            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
-            dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
-            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
+            if None in left_eye_px or None in right_eye_px:
+                dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
+            else:
+                dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
+                dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
+                dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
+                dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
 
-            # # Storing
-            # with self.buffer_lock:
-            #     # Get Motor State
-            #     with self.motor_lock:
-            #         self.calibration.store_latest_state(self._motor_states)
+            # Storing
+            with self.buffer_lock:
+                # Get Motor State
+                with self.motor_lock:
+                    self.calibration.store_latest_state(self._motor_states)
                 
-            #     # Calibration Algorithm
-            #     theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-            #     theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
-            #     theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
-            #     self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
+                # Calibration Algorithm
+                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
+                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
+                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
+                self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
                 
-            #     rospy.loginfo(str(self._motor_states))
-            #     rospy.loginfo(f"dx_l: {dx_l: .{4}f}")
-            #     rospy.loginfo(f"dy_l: {dy_l: .{4}f}")
-            #     rospy.loginfo(f"dx_r: {dx_r: .{4}f}")
-            #     rospy.loginfo(f"dy_r: {dy_r: .{4}f}")
-            #     rospy.loginfo(f"theta_l_pan_t: {self.calibration.buffer['t']['state']['EyeTurnLeft']['angle']: .{4}f}")
-            #     rospy.loginfo(f"theta_r_pan_t: {self.calibration.buffer['t']['state']['EyeTurnRight']['angle']: .{4}f}")
-            #     rospy.loginfo(f"theta_tilt_t: {self.calibration.buffer['t']['state']['EyesUpDown']['angle']: .{4}f}")
-            #     rospy.loginfo(f"theta_l_pan_cmd:: {theta_l_pan: .{4}f}")
-            #     rospy.loginfo(f"theta_r_pan_cmd: {theta_r_pan: .{4}f}")
-            #     rospy.loginfo(f"theta_tilt:_cmd: {theta_tilt: .{4}f}")
-            #     rospy.loginfo(f"eta_tminus1_l_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnLeft']: .{4}f}")
-            #     rospy.loginfo(f"eta_t_l_pan: {self.calibration.buffer['t']['hidden']['EyeTurnLeft']: .{4}f}")
-            #     rospy.loginfo(f"eta_tminus1_r_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnRight']: .{4}f}")
-            #     rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
-            #     rospy.loginfo(f"--------------")
+                rospy.loginfo(str(self._motor_states))
+                rospy.loginfo(f"dx_l: {dx_l: .{4}f}")
+                rospy.loginfo(f"dy_l: {dy_l: .{4}f}")
+                rospy.loginfo(f"dx_r: {dx_r: .{4}f}")
+                rospy.loginfo(f"dy_r: {dy_r: .{4}f}")
+                rospy.loginfo(f"theta_l_pan_t: {self.calibration.buffer['t']['state']['EyeTurnLeft']['angle']: .{4}f}")
+                rospy.loginfo(f"theta_r_pan_t: {self.calibration.buffer['t']['state']['EyeTurnRight']['angle']: .{4}f}")
+                rospy.loginfo(f"theta_tilt_t: {self.calibration.buffer['t']['state']['EyesUpDown']['angle']: .{4}f}")
+                rospy.loginfo(f"theta_l_pan_cmd:: {theta_l_pan: .{4}f}")
+                rospy.loginfo(f"theta_r_pan_cmd: {theta_r_pan: .{4}f}")
+                rospy.loginfo(f"theta_tilt:_cmd: {theta_tilt: .{4}f}")
+                rospy.loginfo(f"eta_tminus1_l_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnLeft']: .{4}f}")
+                rospy.loginfo(f"eta_t_l_pan: {self.calibration.buffer['t']['hidden']['EyeTurnLeft']: .{4}f}")
+                rospy.loginfo(f"eta_tminus1_r_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnRight']: .{4}f}")
+                rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
+                rospy.loginfo(f"--------------")
             
-            # # Movement
-            # self.move((theta_l_pan, theta_r_pan, theta_tilt))
+            # Movement
+            self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
-            # # Visualization
-            # self.left_img = self.ctr_cross_img(self.left_img, 'left_eye')
-            # self.right_img = self.ctr_cross_img(self.right_img, 'right_eye')
-            # concat_img = np.hstack((self.left_img, self.right_img))
+            # Visualization
+            left_img = self.ctr_cross_img(left_img, 'left_eye')
+            right_img = self.ctr_cross_img(right_img, 'right_eye')
+            concat_img = np.hstack((chest_img, left_img, right_img))
+            
+            # Resizing
+            height, width = concat_img.shape[:2]
+            concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
 
             # if len(self.attention.l_detections) > 0 and len(self.attention.l_detections) > 0:
             #     self.disp_img = self.visualize_targets()
 
             # Output Display 1
-            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(self.chest_img, encoding="bgr8"))
+            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
 
             # # Output Display 2                
             # self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(self.disp_img, encoding="bgr8"))
