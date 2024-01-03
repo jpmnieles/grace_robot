@@ -141,6 +141,10 @@ class VisuoMotorNode(object):
             chest_cam_px, chest_img = self.attention.process_img(chess_idx, self.chest_img)
 
             # Calculate Delta between Gaze Center and Pixel Target
+            dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
+            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
+            dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
+            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
 
             # # Storing
             # with self.buffer_lock:
