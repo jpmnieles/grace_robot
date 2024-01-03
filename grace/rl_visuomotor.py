@@ -56,6 +56,7 @@ class VisuoMotorNode(object):
         self.calibration.toggle_backlash(True)
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
+        self.chess_idx_tminus1 = 0
 
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
@@ -136,18 +137,47 @@ class VisuoMotorNode(object):
             chess_idx = random.randint(0,53)
             
             # Process Left Eye, Right Eye, Chest Cam Target
-            left_eye_px, left_img = self.attention.process_img(chess_idx, self.left_img)
-            right_eye_px, right_img = self.attention.process_img(chess_idx, self.right_img)
-            chest_cam_px, chest_img = self.attention.process_img(chess_idx, self.chest_img)
+            left_eye_pxs = self.attention.process_img(chess_idx, self.left_img)
+            right_eye_pxs = self.attention.process_img(chess_idx, self.right_img)
+            chest_cam_pxs = self.attention.process_img(chess_idx, self.chest_img)
 
             # Calculate Delta between Gaze Center and Pixel Target
-            if None in left_eye_px or None in right_eye_px:
+            if left_eye_pxs is None or right_eye_pxs is None or chest_cam_pxs is None:
                 dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
+                left_eye_px = (self.calib_params['left_eye']['x_center'], self.calib_params['left_eye']['y_center'])
+                right_eye_px = (self.calib_params['right_eye']['x_center'], self.calib_params['right_eye']['y_center'])
+                chest_cam_px = (0, 0)
+                left_eye_px_tminus1 = left_eye_px
+                right_eye_px_tminus1 = right_eye_px
+                chest_cam_px_tminus1 = chest_cam_px
             else:
+                left_eye_px = left_eye_pxs[chess_idx]
+                right_eye_px = right_eye_pxs[chess_idx]
+                chest_cam_px = chest_cam_pxs[chess_idx]
+                left_eye_px_tminus1 = left_eye_pxs[self.chess_idx_tminus1]
+                right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
+                chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
+
                 dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
                 dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
                 dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
                 dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
+
+
+
+            # Visualize the Previous Target
+            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(255, 0, 0), 
+                                markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+            left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
+                                markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(255, 0, 0), 
+                        markerType=cv2.MARKER_CROSS, markerSize=13, thickness=2)
+            right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
+                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(255, 0, 0), 
+                        markerType=cv2.MARKER_CROSS, markerSize=13, thickness=2)
+            chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
+                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
 
             # Storing
             with self.buffer_lock:
@@ -198,6 +228,9 @@ class VisuoMotorNode(object):
 
             # # Output Display 2                
             # self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(self.disp_img, encoding="bgr8"))
+
+            # Reassigning
+            self.chess_idx_tminus1 = chess_idx
 
     def visualize_targets(self):
         # Center Marker
