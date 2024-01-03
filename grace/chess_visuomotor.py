@@ -69,9 +69,7 @@ class VisuoMotorNode(object):
         self.chest_cam_sub = message_filters.Subscriber('/hr/perception/jetson/realsense/camera/color/image_raw', Image)
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, self.chest_cam_sub], queue_size=1, slop=0.15)
         self.ats.registerCallback(self.eye_imgs_callback)
-
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.motor_display_pub = rospy.Publisher('/output_display2', Image, queue_size=1)
 
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
@@ -84,7 +82,6 @@ class VisuoMotorNode(object):
         eye_motors_list = []
         self._msg = msg
         for idx, x in enumerate(msg.motor_states):
-            # temp_name_list.append(x.name)
             if x.name in self.names:
                 eye_motors_list.append(idx)
         if len(eye_motors_list) == 3:
@@ -163,8 +160,6 @@ class VisuoMotorNode(object):
                 dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
                 dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
 
-
-
             # Visualize the Previous Target
             left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(255, 0, 0), 
                                 markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
@@ -220,45 +215,11 @@ class VisuoMotorNode(object):
             height, width = concat_img.shape[:2]
             concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
 
-            # if len(self.attention.l_detections) > 0 and len(self.attention.l_detections) > 0:
-            #     self.disp_img = self.visualize_targets()
-
             # Output Display 1
             self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
 
-            # # Output Display 2                
-            # self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(self.disp_img, encoding="bgr8"))
-
             # Reassigning
             self.chess_idx_tminus1 = chess_idx
-
-    def visualize_targets(self):
-        # Center Marker
-        left_img_tminus1 = self.ctr_cross_img(copy.deepcopy(self.camera_buffer['t-1']['left_eye']), 'left_eye')
-        right_img_tminus1 = self.ctr_cross_img(copy.deepcopy(self.camera_buffer['t-1']['right_eye']), 'right_eye')
-        left_img_t = self.ctr_cross_img(copy.deepcopy(self.camera_buffer['t']['left_eye']), 'left_eye')
-        right_img_t = self.ctr_cross_img(copy.deepcopy(self.camera_buffer['t']['right_eye']), 'right_eye')
-
-        # Cropping
-        left_img_tminus1 = left_img_tminus1[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
-                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
-        cv2.putText(left_img_tminus1, 'Left Eye (t-1)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        right_img_tminus1 = right_img_tminus1[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
-                                        round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
-        cv2.putText(right_img_tminus1, 'Right Eye (t-1)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        left_img_t = left_img_t[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
-                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
-        cv2.putText(left_img_t, 'Left Eye (t)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        right_img_t= right_img_t[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
-                                        round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
-        cv2.putText(right_img_t, 'Right Eye (t)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        
-        # Concatenation
-        before_imgs = np.hstack((left_img_tminus1, right_img_tminus1))
-        after_imgs = np.hstack((left_img_t, right_img_t))
-        disp_img = np.vstack((before_imgs, after_imgs))
-
-        return disp_img
 
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
