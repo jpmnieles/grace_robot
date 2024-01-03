@@ -80,8 +80,6 @@ class ChessboardAttention(object):
         return img
 
     def process_img(self, chess_idx, img):
-        px = (None,None)
-
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, (9,6),None)
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -89,7 +87,7 @@ class ChessboardAttention(object):
         if ret == True:
             corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
             s_corners = corners2.squeeze()
-            px = s_corners[chess_idx]
-            img = self.visualize_chess_idx(px, img)
+        else:
+            s_corners = None
 
-        return px, img
+        return s_corners
