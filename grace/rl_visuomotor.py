@@ -66,8 +66,8 @@ class VisuoMotorNode(object):
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
-        self.chest_cam_sub = message_filters.Subscriber('/hr/perception/jetson/realsense/camera/aligned_depth_to_color/image_raw', Image)
-        self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, self.chest_cam_sub], queue_size=1, slop=0.015)
+        self.chest_cam_sub = message_filters.Subscriber('/hr/perception/jetson/realsense/camera/color/image_raw', Image)
+        self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, self.chest_cam_sub], queue_size=1, slop=0.15)
         self.ats.registerCallback(self.eye_imgs_callback)
 
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
@@ -75,6 +75,7 @@ class VisuoMotorNode(object):
 
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
+        rospy.loginfo('Running')
 
 
     def _capture_state(self, msg):
@@ -106,7 +107,7 @@ class VisuoMotorNode(object):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
-        if elapsed_time > 283e-3:
+        if elapsed_time > 285e-3:
             print('--------------')
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
@@ -120,7 +121,7 @@ class VisuoMotorNode(object):
             self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
-            # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
+            print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
 
             # Snapshot
             self.camera_buffer['t-1']['left_eye'] = copy.deepcopy(self.camera_buffer['t']['left_eye'])
