@@ -90,6 +90,6 @@ class ChessboardAttention(object):
             corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
             s_corners = corners2.squeeze()
             px = s_corners[chess_idx]
-            img = self.visualize_chess_idx(chess_idx, s_corners, img)
+            img = self.visualize_chess_idx(px, img)
 
         return px, img
