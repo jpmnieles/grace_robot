@@ -63,6 +63,7 @@ class BaselineCalibration(object):
         self.lock = lock
         self.camera_mtx = load_camera_mtx()
         self.calib_params = load_json('config/calib/calib_params.json')
+        self.toggle_backlash(False)
         self.reset_buffer()
 
     def reset_buffer(self):
@@ -97,6 +98,7 @@ class BaselineCalibration(object):
         eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnLeft']
         if eta_tminus1 is None:
             eta_tminus1 = self.buffer['t']['state']['EyeTurnLeft']['angle']
+            self.buffer['t-1']['hidden']['EyeTurnLeft'] = eta_tminus1
         eta_t = eta_tminus1 + max(0, theta_l_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_l_pan)
         self.buffer['t']['hidden']['EyeTurnLeft'] = eta_t
         return eta_t
@@ -107,6 +109,7 @@ class BaselineCalibration(object):
         eta_tminus1 = self.buffer['t-1']['hidden']['EyeTurnRight']
         if eta_tminus1 is None:
             eta_tminus1 = self.buffer['t']['state']['EyeTurnRight']['angle']
+            self.buffer['t-1']['hidden']['EyeTurnRight'] = eta_tminus1
         eta_t = eta_tminus1 + max(0, theta_r_pan-eta_tminus1) - max(0, eta_tminus1-backlash-theta_r_pan)
         self.buffer['t']['hidden']['EyeTurnRight'] = eta_t
         return eta_t
