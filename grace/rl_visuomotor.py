@@ -62,7 +62,6 @@ class VisuoMotorNode(object):
         self.bridge = CvBridge()
         time.sleep(1)
 
-        # self._motor_state = [None]*self.num_names
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
@@ -121,7 +120,7 @@ class VisuoMotorNode(object):
             self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
-            print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
+            # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
 
             # Snapshot
             self.camera_buffer['t-1']['left_eye'] = copy.deepcopy(self.camera_buffer['t']['left_eye'])
@@ -140,6 +139,8 @@ class VisuoMotorNode(object):
             left_eye_px, left_img = self.attention.process_img(chess_idx, self.left_img)
             right_eye_px, right_img = self.attention.process_img(chess_idx, self.right_img)
             chest_cam_px, chest_img = self.attention.process_img(chess_idx, self.chest_img)
+
+            # Calculate Delta between Gaze Center and Pixel Target
 
             # # Storing
             # with self.buffer_lock:
@@ -253,9 +254,9 @@ class VisuoMotorNode(object):
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
         """
-        img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
-        img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (640, round(self.camera_mtx[eye]['cy'])), (0,255,0))
-        img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+        img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
+        img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
+        img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         return img
 
 
