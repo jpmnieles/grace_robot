@@ -138,8 +138,8 @@ class VisuoMotorNode(object):
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_px, left_img = self.attention.process_img(chess_idx, self.left_img)
-            left_eye_px, left_img = self.attention.process_img(chess_idx, self.left_img)
-            left_eye_px, left_img = self.attention.process_img(chess_idx, self.left_img)
+            right_eye_px, right_img = self.attention.process_img(chess_idx, self.right_img)
+            chest_cam_px, chest_img = self.attention.process_img(chess_idx, self.chest_img)
 
             # # Storing
             # with self.buffer_lock:
@@ -181,8 +181,8 @@ class VisuoMotorNode(object):
             # if len(self.attention.l_detections) > 0 and len(self.attention.l_detections) > 0:
             #     self.disp_img = self.visualize_targets()
 
-            # # Output Display 1
-            # self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
+            # Output Display 1
+            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(self.chest_img, encoding="bgr8"))
 
             # # Output Display 2                
             # self.motor_display_pub.publish(self.bridge.cv2_to_imgmsg(self.disp_img, encoding="bgr8"))
