@@ -73,8 +73,8 @@ class ChessboardAttention(object):
     def __init__(self) -> None:
         self.camera_mtx = load_camera_mtx()
 
-    def visualize_chess_idx(self, chess_idx, chess_list, img):
-        x, y = chess_list[chess_idx]
+    def visualize_chess_idx(self, px, img):
+        x, y = px
         img = cv2.drawMarker(img, (round(x),round(y)), color=(255, 0, 0), 
                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
         return img
