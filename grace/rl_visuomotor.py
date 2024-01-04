@@ -205,21 +205,51 @@ class VisuoMotorNode(object):
                 theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
                 self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
                 
-                rospy.loginfo(str(self._motor_states))
-                rospy.loginfo(f"dx_l: {dx_l: .{4}f}")
-                rospy.loginfo(f"dy_l: {dy_l: .{4}f}")
-                rospy.loginfo(f"dx_r: {dx_r: .{4}f}")
-                rospy.loginfo(f"dy_r: {dy_r: .{4}f}")
-                rospy.loginfo(f"theta_l_pan_t: {self.calibration.buffer['t']['state']['EyeTurnLeft']['angle']: .{4}f}")
-                rospy.loginfo(f"theta_r_pan_t: {self.calibration.buffer['t']['state']['EyeTurnRight']['angle']: .{4}f}")
-                rospy.loginfo(f"theta_tilt_t: {self.calibration.buffer['t']['state']['EyesUpDown']['angle']: .{4}f}")
-                rospy.loginfo(f"theta_l_pan_cmd:: {theta_l_pan: .{4}f}")
-                rospy.loginfo(f"theta_r_pan_cmd: {theta_r_pan: .{4}f}")
-                rospy.loginfo(f"theta_tilt:_cmd: {theta_tilt: .{4}f}")
-                rospy.loginfo(f"eta_tminus1_l_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnLeft']: .{4}f}")
-                rospy.loginfo(f"eta_t_l_pan: {self.calibration.buffer['t']['hidden']['EyeTurnLeft']: .{4}f}")
-                rospy.loginfo(f"eta_tminus1_r_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnRight']: .{4}f}")
-                rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
+                # Storing
+                state_buffer = {
+                    't-1': {
+                        'chest_cam_px': None,
+                        'left_eye_px': None,
+                        'right_eye_px': None,
+                        'theta_left_pan': None,
+                        'theta_right_pan': None,
+                        'theta_tilt': None,
+                    },
+                    't': {
+                        'chest_cam_px': None,
+                        'left_eye_px': None,
+                        'right_eye_px': None,
+                        'theta_left_pan': None,
+                        'theta_right_pan': None,
+                        'theta_tilt': None,
+                    }
+                }
+                self.state_buffer['t-1'] = copy.deepcopy(self.state_buffer['t'])
+                self.state_buffer['t']['chest_cam_px'] = chest_cam_px
+                self.state_buffer['t']['left_eye_px'] = left_eye_px
+                self.state_buffer['t']['right_eye_px'] = right_eye_px
+                self.state_buffer['t']['theta_left_pan'] = self._motor_states[0]['angle']
+                self.state_buffer['t']['theta_right_pan'] = self._motor_states[1]['angle']
+                self.state_buffer['t']['theta_tilt'] = self._motor_states[2]['angle']
+                rospy.loginfo(str(self.state_buffer))
+
+
+                # # Print Info
+                # rospy.loginfo(str(self._motor_states))
+                # rospy.loginfo(f"dx_l: {dx_l: .{4}f}")
+                # rospy.loginfo(f"dy_l: {dy_l: .{4}f}")
+                # rospy.loginfo(f"dx_r: {dx_r: .{4}f}")
+                # rospy.loginfo(f"dy_r: {dy_r: .{4}f}")
+                # rospy.loginfo(f"theta_l_pan_t: {self.calibration.buffer['t']['state']['EyeTurnLeft']['angle']: .{4}f}")
+                # rospy.loginfo(f"theta_r_pan_t: {self.calibration.buffer['t']['state']['EyeTurnRight']['angle']: .{4}f}")
+                # rospy.loginfo(f"theta_tilt_t: {self.calibration.buffer['t']['state']['EyesUpDown']['angle']: .{4}f}")
+                # rospy.loginfo(f"theta_l_pan_cmd:: {theta_l_pan: .{4}f}")
+                # rospy.loginfo(f"theta_r_pan_cmd: {theta_r_pan: .{4}f}")
+                # rospy.loginfo(f"theta_tilt:_cmd: {theta_tilt: .{4}f}")
+                # rospy.loginfo(f"eta_tminus1_l_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnLeft']: .{4}f}")
+                # rospy.loginfo(f"eta_t_l_pan: {self.calibration.buffer['t']['hidden']['EyeTurnLeft']: .{4}f}")
+                # rospy.loginfo(f"eta_tminus1_r_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnRight']: .{4}f}")
+                # rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
                 rospy.loginfo(f"--------------")
             
             # Movement
