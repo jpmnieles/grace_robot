@@ -236,7 +236,9 @@ class VisuoMotorNode(object):
                 rospy.loginfo(f"--------------")
             
             # Movement
-            self.move((theta_l_pan, theta_r_pan, theta_tilt))
+            theta_l_pan, theta_r_pan, theta_tilt = None, None, None
+            if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
+                self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
