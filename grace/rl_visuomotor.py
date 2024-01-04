@@ -12,7 +12,7 @@ import message_filters
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String, Header
 from cv_bridge import CvBridge, CvBridgeError
 
 import cv2
@@ -38,9 +38,6 @@ class VisuoMotorNode(object):
             'theta_left_pan': None,
             'theta_right_pan': None,
             'theta_tilt': None,
-            'left_eye_cam': None,
-            'right_eye_cam': None,
-            'chest_cam': None,
         },
         't': {
             'chest_cam_px': None,
@@ -48,10 +45,6 @@ class VisuoMotorNode(object):
             'right_eye_px': None,
             'theta_left_pan': None,
             'theta_right_pan': None,
-            'theta_tilt': None,
-            'left_eye_cam': None,
-            'right_eye_cam': None,
-            'chest_cam': None,
         }
     }
 
@@ -95,6 +88,7 @@ class VisuoMotorNode(object):
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, self.chest_cam_sub], queue_size=1, slop=0.15)
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
+        self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
 
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
@@ -173,9 +167,9 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
             else:
-                left_eye_px = left_eye_pxs[chess_idx]
-                right_eye_px = right_eye_pxs[chess_idx]
-                chest_cam_px = chest_cam_pxs[chess_idx]
+                left_eye_px = tuple(left_eye_pxs[chess_idx].tolist())
+                right_eye_px = tuple(right_eye_pxs[chess_idx].tolist())
+                chest_cam_px = tuple(chest_cam_pxs[chess_idx].tolist())
                 left_eye_px_tminus1 = left_eye_pxs[self.chess_idx_tminus1]
                 right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
@@ -256,6 +250,14 @@ class VisuoMotorNode(object):
 
             # Reassigning
             self.chess_idx_tminus1 = chess_idx
+
+            # Publish States
+            json_str = json.dumps(self.state_buffer)
+            message = String()
+            message.data = json_str
+
+            # Publish the message
+            self.state_pub.publish(message)
 
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
