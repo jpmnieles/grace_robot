@@ -38,6 +38,9 @@ class VisuoMotorNode(object):
             'theta_left_pan': None,
             'theta_right_pan': None,
             'theta_tilt': None,
+            'left_eye_cam': None,
+            'right_eye_cam': None,
+            'chest_cam': None,
         },
         't': {
             'chest_cam_px': None,
@@ -46,6 +49,9 @@ class VisuoMotorNode(object):
             'theta_left_pan': None,
             'theta_right_pan': None,
             'theta_tilt': None,
+            'left_eye_cam': None,
+            'right_eye_cam': None,
+            'chest_cam': None,
         }
     }
 
@@ -198,15 +204,6 @@ class VisuoMotorNode(object):
                 # Get Motor State
                 with self.motor_lock:
                     self.calibration.store_latest_state(self._motor_states)
-                
-                # Calibration Algorithm
-                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
-                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
-                self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-                
-                # Storing
-                with self.motor_lock:
                     self.state_buffer['t-1'] = copy.deepcopy(self.state_buffer['t'])
                     self.state_buffer['t']['chest_cam_px'] = chest_cam_px
                     self.state_buffer['t']['left_eye_px'] = left_eye_px
@@ -215,7 +212,12 @@ class VisuoMotorNode(object):
                     self.state_buffer['t']['theta_right_pan'] = self._motor_states[1]['angle']
                     self.state_buffer['t']['theta_tilt'] = self._motor_states[2]['angle']
                     rospy.loginfo(str(self.state_buffer))
-
+                
+                # Calibration Algorithm
+                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
+                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
+                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
+                self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
 
                 # # Print Info
                 # rospy.loginfo(str(self._motor_states))
@@ -236,7 +238,7 @@ class VisuoMotorNode(object):
                 rospy.loginfo(f"--------------")
             
             # Movement
-            theta_l_pan, theta_r_pan, theta_tilt = None, None, None
+            # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
                 self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
