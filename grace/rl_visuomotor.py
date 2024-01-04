@@ -30,6 +30,25 @@ from grace.attention import *
 
 class VisuoMotorNode(object):
     
+    state_buffer = {
+        't-1': {
+            'chest_cam_px': None,
+            'left_eye_px': None,
+            'right_eye_px': None,
+            'theta_left_pan': None,
+            'theta_right_pan': None,
+            'theta_tilt': None,
+        },
+        't': {
+            'chest_cam_px': None,
+            'left_eye_px': None,
+            'right_eye_px': None,
+            'theta_left_pan': None,
+            'theta_right_pan': None,
+            'theta_tilt': None,
+        }
+    }
+
     camera_buffer = {
         't-1': {
             'left_eye': np.zeros((480,640,3), dtype=np.uint8),
