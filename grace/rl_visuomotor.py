@@ -206,32 +206,15 @@ class VisuoMotorNode(object):
                 self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
                 
                 # Storing
-                state_buffer = {
-                    't-1': {
-                        'chest_cam_px': None,
-                        'left_eye_px': None,
-                        'right_eye_px': None,
-                        'theta_left_pan': None,
-                        'theta_right_pan': None,
-                        'theta_tilt': None,
-                    },
-                    't': {
-                        'chest_cam_px': None,
-                        'left_eye_px': None,
-                        'right_eye_px': None,
-                        'theta_left_pan': None,
-                        'theta_right_pan': None,
-                        'theta_tilt': None,
-                    }
-                }
-                self.state_buffer['t-1'] = copy.deepcopy(self.state_buffer['t'])
-                self.state_buffer['t']['chest_cam_px'] = chest_cam_px
-                self.state_buffer['t']['left_eye_px'] = left_eye_px
-                self.state_buffer['t']['right_eye_px'] = right_eye_px
-                self.state_buffer['t']['theta_left_pan'] = self._motor_states[0]['angle']
-                self.state_buffer['t']['theta_right_pan'] = self._motor_states[1]['angle']
-                self.state_buffer['t']['theta_tilt'] = self._motor_states[2]['angle']
-                rospy.loginfo(str(self.state_buffer))
+                with self.motor_lock:
+                    self.state_buffer['t-1'] = copy.deepcopy(self.state_buffer['t'])
+                    self.state_buffer['t']['chest_cam_px'] = chest_cam_px
+                    self.state_buffer['t']['left_eye_px'] = left_eye_px
+                    self.state_buffer['t']['right_eye_px'] = right_eye_px
+                    self.state_buffer['t']['theta_left_pan'] = self._motor_states[0]['angle']
+                    self.state_buffer['t']['theta_right_pan'] = self._motor_states[1]['angle']
+                    self.state_buffer['t']['theta_tilt'] = self._motor_states[2]['angle']
+                    rospy.loginfo(str(self.state_buffer))
 
 
                 # # Print Info
