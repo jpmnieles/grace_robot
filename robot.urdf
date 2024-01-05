@@ -124,11 +124,7 @@
         <child link="robot_neck_rp"/>
         <axis xyz="1 0 0"/>
         <origin xyz="0 0 0.5"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="neck_pitch" type="revolute">
@@ -136,11 +132,7 @@
         <child link="robot_neck_py"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="neck_yaw" type="revolute">
@@ -148,11 +140,7 @@
         <child link="neck"/>
         <axis xyz="0 0 1"/>
         <origin xyz="0 0 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="head_roll" type="revolute">
@@ -160,11 +148,7 @@
         <child link="neck_head_rp"/>
         <axis xyz="1 0 0"/>
         <origin xyz="0 0 0.18"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="head_pitch" type="revolute">
@@ -172,11 +156,7 @@
         <child link="head"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="eyes_pitch" type="revolute">
@@ -184,11 +164,7 @@
         <child link="eyes"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0.06 0 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="lefteye_yaw" type="revolute">
@@ -196,11 +172,7 @@
         <child link="lefteye"/>
         <axis xyz="0 0 1"/>
         <origin xyz="0 -0.03 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 
     <joint name="righteye_yaw" type="revolute">
@@ -208,10 +180,6 @@
         <child link="righteye"/>
         <axis xyz="0 0 1"/>
         <origin xyz="0 0.03 0"/>
-<<<<<<< HEAD
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
-=======
-        <limit effort="1" velocity="1"/>
->>>>>>> 3bd5d31298882ac7c11b4a34409f667ab988caa4
     </joint>
 </robot>
