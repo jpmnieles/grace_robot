@@ -168,7 +168,7 @@ class VisuoMotorNode(object):
             
             # Random Target
             chess_idx = random.randint(0,53)
-            chess_idx = 2
+            chess_idx = 7  # For calibration
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(chess_idx, self.left_img)
@@ -200,9 +200,11 @@ class VisuoMotorNode(object):
                 x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
                 
                 # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
+                y_offset = 0.35
                 point_msg.point.x = z  # Replace with your desired X coordinate
-                point_msg.point.y = -x  # Replace with your desired Y coordinate
+                point_msg.point.y = -x + y_offset  # Replace with your desired Y coordinate
                 point_msg.point.z = -y  # Replace with your desired Z coordinate
+                print("Chest_cam_px", chest_cam_px)
                 print("Point",z,-x,-y)
                 # Publish
                 self.point_pub.publish(point_msg)
@@ -334,9 +336,15 @@ class VisuoMotorNode(object):
         """eye (str): select from ['left_eye', 'right_eye', 'chest_cam']
         """
         if eye == 'chest_cam':
+            # True Optical Center
             img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (848, round(self.camera_mtx[eye]['cy'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+        
+            # Adjusted Center
+            img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
+            img = cv2.line(img, (0, 218), (848, 218), (255,0,0))
+            img = cv2.drawMarker(img, (434, 218), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
