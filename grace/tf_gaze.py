@@ -14,6 +14,7 @@ from rospy_message_converter import message_converter
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32, String, Header
 from cv_bridge import CvBridge, CvBridgeError
+from geometry_msgs.msg import PointStamped
 
 import cv2
 import dlib
@@ -91,6 +92,7 @@ class VisuoMotorNode(object):
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
+        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=10)
 
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
@@ -120,6 +122,17 @@ class VisuoMotorNode(object):
             # rospy.loginfo('Incomplete')
             pass
 
+    def depth_to_pointcloud(self, px, depth_img):
+        fx = self.camera_mtx['chest_cam']['fx']
+        cx = self.camera_mtx['chest_cam']['cx']
+        fy = self.camera_mtx['chest_cam']['fy']
+        cy = self.camera_mtx['chest_cam']['cy']
+        u = round(px[0])
+        v = round(px[1])
+        z = depth_img[v,u]/1000.0
+        x = ((u-cx)/fx)*z
+        y = ((v-cy)/fy)*z
+        return (x,y,z)
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
@@ -141,7 +154,7 @@ class VisuoMotorNode(object):
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
-            print(self.depth_img)
+            # print(self.depth_img)
 
             # Snapshot
             self.camera_buffer['t-1']['left_eye'] = copy.deepcopy(self.camera_buffer['t']['left_eye'])
@@ -155,6 +168,7 @@ class VisuoMotorNode(object):
             
             # Random Target
             chess_idx = random.randint(0,53)
+            chess_idx = 2
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(chess_idx, self.left_img)
@@ -171,6 +185,7 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
             else:
+                # Preprocessing
                 left_eye_px = tuple(left_eye_pxs[chess_idx].tolist())
                 right_eye_px = tuple(right_eye_pxs[chess_idx].tolist())
                 chest_cam_px = tuple(chest_cam_pxs[chess_idx].tolist())
@@ -178,11 +193,27 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
 
+                # Point Stamp
+                point_msg = PointStamped()
+                point_msg.header.stamp = rospy.Time.now()
+                point_msg.header.frame_id = 'realsense'  # Replace with your desired frame ID
+                x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
+                
+                # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
+                point_msg.point.x = z  # Replace with your desired X coordinate
+                point_msg.point.y = -x  # Replace with your desired Y coordinate
+                point_msg.point.z = -y  # Replace with your desired Z coordinate
+                print("Point",z,-x,-y)
+                # Publish
+                self.point_pub.publish(point_msg)
+
+                # Calculation
                 dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
                 dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
                 dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
                 dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
 
+ 
             # Visualize the Previous Target
             left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(255, 0, 0), 
                                 markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
@@ -243,6 +274,7 @@ class VisuoMotorNode(object):
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
+            chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
             concat_img = np.hstack((chest_img, left_img, right_img))
             
             # Resizing
@@ -299,11 +331,16 @@ class VisuoMotorNode(object):
         self.motor_pub.publish(TargetPosture(**args))
 
     def ctr_cross_img(self, img, eye:str):
-        """eye (str): select from ['left_eye', 'right_eye']
+        """eye (str): select from ['left_eye', 'right_eye', 'chest_cam']
         """
-        img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
-        img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
-        img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+        if eye == 'chest_cam':
+            img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
+            img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (848, round(self.camera_mtx[eye]['cy'])), (0,255,0))
+            img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+        else:
+            img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
+            img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
+            img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         return img
 
 
