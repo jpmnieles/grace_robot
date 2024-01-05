@@ -94,6 +94,7 @@ class VisuoMotorNode(object):
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=10)
 
+        self.chess_idx = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
@@ -167,13 +168,17 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            chess_idx = random.randint(0,53)
-            chess_idx = 7  # For calibration
+            # chess_idx = random.randint(0,53)
+            # chess_idx = 7  # For calibration
+            if self.chess_idx == 53:
+                self.chess_idx = 0
+            else:
+                self.chess_idx += 1
             
             # Process Left Eye, Right Eye, Chest Cam Target
-            left_eye_pxs = self.attention.process_img(chess_idx, self.left_img)
-            right_eye_pxs = self.attention.process_img(chess_idx, self.right_img)
-            chest_cam_pxs = self.attention.process_img(chess_idx, self.chest_img)
+            left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
+            right_eye_pxs = self.attention.process_img(self.chess_idx, self.right_img)
+            chest_cam_pxs = self.attention.process_img(self.chess_idx, self.chest_img)
 
             # Calculate Delta between Gaze Center and Pixel Target
             if left_eye_pxs is None or right_eye_pxs is None or chest_cam_pxs is None:
@@ -186,9 +191,9 @@ class VisuoMotorNode(object):
                 chest_cam_px_tminus1 = chest_cam_px
             else:
                 # Preprocessing
-                left_eye_px = tuple(left_eye_pxs[chess_idx].tolist())
-                right_eye_px = tuple(right_eye_pxs[chess_idx].tolist())
-                chest_cam_px = tuple(chest_cam_pxs[chess_idx].tolist())
+                left_eye_px = tuple(left_eye_pxs[self.chess_idx].tolist())
+                right_eye_px = tuple(right_eye_pxs[self.chess_idx].tolist())
+                chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
                 left_eye_px_tminus1 = left_eye_pxs[self.chess_idx_tminus1]
                 right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
@@ -217,16 +222,16 @@ class VisuoMotorNode(object):
 
  
             # Visualize the Previous Target
-            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(255, 0, 0), 
-                                markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
+                                markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
             left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
                                 markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(255, 0, 0), 
-                        markerType=cv2.MARKER_CROSS, markerSize=13, thickness=2)
+            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
+                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(255, 0, 0), 
-                        markerType=cv2.MARKER_CROSS, markerSize=13, thickness=2)
+            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
+                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
 
@@ -287,7 +292,7 @@ class VisuoMotorNode(object):
             self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
 
             # Reassigning
-            self.chess_idx_tminus1 = chess_idx
+            self.chess_idx_tminus1 = self.chess_idx
 
             # Publish States
             json_str = json.dumps(self.state_buffer)
