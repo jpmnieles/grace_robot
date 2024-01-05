@@ -1,0 +1,2 @@
+rosparam set robot_description -t robot.urdf
+rosrun robot_state_publisher robot_state_publisher robot_description:=robot_description
