@@ -130,7 +130,7 @@
     <joint name="neck_pitch" type="revolute">
         <parent link="robot_neck_rp"/>
         <child link="robot_neck_py"/>
-        <axis xyz="0 1 0"/>
+        <axis xyz="0 -1 0"/>
         <origin xyz="0 0 0"/>
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
     </joint>
