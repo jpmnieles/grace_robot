@@ -243,13 +243,8 @@ class VisuoMotorNode(object):
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
             y_offset = 0.35
             target_x = max(0.3, z)
-            if target_x == 0.3:
-                target_x = 1.5
-                target_y = 0.75
-                target_z = 0
-            else:
-                target_y = -x + y_offset
-                target_z = -y
+            target_y = -x + y_offset
+            target_z = -y
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
@@ -275,7 +270,8 @@ class VisuoMotorNode(object):
             # Publish Joint States
             joints = ['eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
             positions = [eyes_tilt, left_pan, right_pan]
-            self.publish_joint_state(joints, positions)
+            if target_x != 0.3:
+                self.publish_joint_state(joints, positions)
 
             # Calculation
             dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
