@@ -162,7 +162,7 @@
     <joint name="eyes_pitch" type="revolute">
         <parent link="head"/>
         <child link="eyes"/>
-        <axis xyz="0 1 0"/>
+        <axis xyz="0 -1 0"/>
         <origin xyz="0.06 0 0"/>
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
     </joint>
@@ -171,7 +171,7 @@
         <parent link="eyes"/>
         <child link="lefteye"/>
         <axis xyz="0 0 1"/>
-        <origin xyz="0 -0.03 0"/>
+        <origin xyz="0 0.03 0"/>
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
     </joint>
 
@@ -179,7 +179,7 @@
         <parent link="eyes"/>
         <child link="righteye"/>
         <axis xyz="0 0 1"/>
-        <origin xyz="0 0.03 0"/>
+        <origin xyz="0 -0.03 0"/>
         <limit effort="1" lower="-1" upper="1" velocity="1"/>
     </joint>
 </robot>
