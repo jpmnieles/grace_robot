@@ -85,8 +85,7 @@ class VisuoMotorNode(object):
         self.motor_stamp_tminus1 = rospy.Time.now()
         self.chess_idx_tminus1 = 0
 
-        self.joint_state_pub = rospy.Publisher('joint_states', JointState, queue_size=1)
-        self.publish_joint_state()
+        self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
@@ -111,16 +110,11 @@ class VisuoMotorNode(object):
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
 
-    def publish_joint_state(self, names=None, values=None):
-        positions = [0,0,0,0,0,0,0,0]
-        if names is not None or values is not None:
-            for name, value in zip(names, values):
-                idx = self.joints_list.index(name)
-                positions[idx] = value
+    def publish_joint_state(self, names, values):
         joint_state = JointState()
         joint_state.header.stamp = rospy.Time.now()
-        joint_state.name = self.joints_list
-        joint_state.position = positions
+        joint_state.name = names
+        joint_state.position = values
         self.joint_state_pub.publish(joint_state)
 
     def _capture_state(self, msg):
@@ -201,19 +195,19 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            # self.chess_idx = random.randint(0,17)
+            self.chess_idx = random.randint(0,17)
             
             # For calibration
             # self.chess_idx = 7
 
             # Sequential  
-            if self.ctr%2 == 0: 
-                if self.chess_idx == 17:
-                    self.chess_idx = 0
-                    self.ctr = -1
-                else:
-                    self.chess_idx += 1
-            self.ctr+=1
+            # if self.ctr%2 == 0: 
+            #     if self.chess_idx == 17:
+            #         self.chess_idx = 0
+            #         self.ctr = -1
+            #     else:
+            #         self.chess_idx += 1
+            # self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
