@@ -16,6 +16,10 @@ from std_msgs.msg import Float32, String, Header
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import PointStamped
 
+import tf
+from tf.transformations import translation_matrix, quaternion_matrix
+from sensor_msgs.msg import JointState
+
 import cv2
 import dlib
 import numpy as np
@@ -93,6 +97,7 @@ class VisuoMotorNode(object):
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
+        self.tf_listener = tf.TransformListener()
 
         self.chess_idx = 0
         self.ctr = 0
@@ -135,6 +140,16 @@ class VisuoMotorNode(object):
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
         return (x,y,z)
+    
+    def transform_point(self, source_frame, target_frame, pts:list):
+        (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
+        transformation_matrix = translation_matrix(trans)
+        rotation_matrix = quaternion_matrix(rot)
+        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
+        new_x = transformed_point[0, 3]
+        new_y = transformed_point[1, 3]
+        new_z = transformed_point[2, 3]
+        return (new_x, new_y, new_z)
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
@@ -210,13 +225,30 @@ class VisuoMotorNode(object):
                 
                 # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
                 y_offset = 0.35
-                point_msg.point.x = z  # Replace with your desired X coordinate
-                point_msg.point.y = -x + y_offset  # Replace with your desired Y coordinate
-                point_msg.point.z = -y  # Replace with your desired Z coordinate
+                target_x = z
+                target_y = -x + y_offset
+                target_z = -y
+                point_msg.point.x = target_x
+                point_msg.point.y = target_y
+                point_msg.point.z = target_z
                 print("Chest_cam_px", chest_cam_px)
-                print("Point",z,-x+y_offset,-y)
+                print("Point", target_x, target_y, target_z)
                 # Publish
                 self.point_pub.publish(point_msg)
+
+                # Angles Calculation
+                left_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='lefteye',
+                                                    pts=[target_x, target_y, target_z])
+                right_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='righteye',
+                                                    pts=[target_x, target_y, target_z])
+                cyclops_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='eyes',
+                                                    pts=[target_x, target_y, target_z])
+                left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
+                right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
+                eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
+                rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
+                rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
+                rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
 
                 # Calculation
                 dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
