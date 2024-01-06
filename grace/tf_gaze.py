@@ -168,8 +168,8 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            # chess_idx = random.randint(0,53)
-            # chess_idx = 7  # For calibration
+            # self.chess_idx = random.randint(0,53)
+            # self.chess_idx = 7  # For calibration
             if self.chess_idx == 53:
                 self.chess_idx = 0
             else:
@@ -201,7 +201,7 @@ class VisuoMotorNode(object):
                 # Point Stamp
                 point_msg = PointStamped()
                 point_msg.header.stamp = rospy.Time.now()
-                point_msg.header.frame_id = 'realsense'  # Replace with your desired frame ID
+                point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
                 x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
                 
                 # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
@@ -210,7 +210,7 @@ class VisuoMotorNode(object):
                 point_msg.point.y = -x + y_offset  # Replace with your desired Y coordinate
                 point_msg.point.z = -y  # Replace with your desired Z coordinate
                 print("Chest_cam_px", chest_cam_px)
-                print("Point",z,-x,-y)
+                print("Point",z,-x+y_offset,-y)
                 # Publish
                 self.point_pub.publish(point_msg)
 
