@@ -92,7 +92,7 @@ class VisuoMotorNode(object):
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
-        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=10)
+        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
 
         self.chess_idx = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
