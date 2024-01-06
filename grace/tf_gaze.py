@@ -86,6 +86,7 @@ class VisuoMotorNode(object):
         self.chess_idx_tminus1 = 0
 
         self.joint_state_pub = rospy.Publisher('joint_states', JointState, queue_size=1)
+        self.publish_joint_state()
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
@@ -103,7 +104,6 @@ class VisuoMotorNode(object):
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         self.tf_listener = tf.TransformListener()
-        self.publish_joint_state()
 
         self.chess_idx = 0
         self.ctr = 0
@@ -201,15 +201,19 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            # self.chess_idx = random.randint(0,53)
-            # self.chess_idx = 7  # For calibration
-            if self.ctr%2 == 0: 
-                if self.chess_idx == 53:
-                    self.chess_idx = 0
-                    self.ctr = -1
-                else:
-                    self.chess_idx += 1
-            self.ctr+=1
+            self.chess_idx = random.randint(0,53)
+            
+            # For calibration
+            # self.chess_idx = 7
+
+            # Sequential  
+            # if self.ctr%2 == 0: 
+            #     if self.chess_idx == 53:
+            #         self.chess_idx = 0
+            #         self.ctr = -1
+            #     else:
+            #         self.chess_idx += 1
+            # self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
@@ -242,9 +246,14 @@ class VisuoMotorNode(object):
                 
                 # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
                 y_offset = 0.35
-                target_x = z
-                target_y = -x + y_offset
-                target_z = -y
+                target_x = max(0.3, z)
+                if target_x == 0.3:
+                    target_x = 1.5
+                    target_y = 0.75
+                    target_z = 0
+                else:
+                    target_y = -x + y_offset
+                    target_z = -y
                 point_msg.point.x = target_x
                 point_msg.point.y = target_y
                 point_msg.point.z = target_z
