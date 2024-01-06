@@ -201,19 +201,19 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            self.chess_idx = random.randint(0,53)
+            # self.chess_idx = random.randint(0,17)
             
             # For calibration
             # self.chess_idx = 7
 
             # Sequential  
-            # if self.ctr%2 == 0: 
-            #     if self.chess_idx == 53:
-            #         self.chess_idx = 0
-            #         self.ctr = -1
-            #     else:
-            #         self.chess_idx += 1
-            # self.ctr+=1
+            if self.ctr%2 == 0: 
+                if self.chess_idx == 17:
+                    self.chess_idx = 0
+                    self.ctr = -1
+                else:
+                    self.chess_idx += 1
+            self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
@@ -225,7 +225,7 @@ class VisuoMotorNode(object):
                 dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
                 left_eye_px = (self.calib_params['left_eye']['x_center'], self.calib_params['left_eye']['y_center'])
                 right_eye_px = (self.calib_params['right_eye']['x_center'], self.calib_params['right_eye']['y_center'])
-                chest_cam_px = (0, 0)
+                chest_cam_px = (240, 424)
                 left_eye_px_tminus1 = left_eye_px
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
@@ -238,54 +238,56 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
 
-                # Point Stamp
-                point_msg = PointStamped()
-                point_msg.header.stamp = rospy.Time.now()
-                point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-                x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
-                
-                # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-                y_offset = 0.35
-                target_x = max(0.3, z)
-                if target_x == 0.3:
-                    target_x = 1.5
-                    target_y = 0.75
-                    target_z = 0
-                else:
-                    target_y = -x + y_offset
-                    target_z = -y
-                point_msg.point.x = target_x
-                point_msg.point.y = target_y
-                point_msg.point.z = target_z
-                print("Chest_cam_px", chest_cam_px)
-                print("Point", target_x, target_y, target_z)
-                # Publish
-                self.point_pub.publish(point_msg)
 
-                # Angles Calculation
-                left_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='lefteye',
-                                                    pts=[target_x, target_y, target_z])
-                right_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='righteye',
-                                                    pts=[target_x, target_y, target_z])
-                cyclops_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='eyes',
-                                                    pts=[target_x, target_y, target_z])
-                eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
-                left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
-                right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
-                rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
-                rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
-                rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
-                
-                # Publish Joint States
-                joints = ['eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
-                positions = [eyes_tilt, left_pan, right_pan]
-                self.publish_joint_state(joints, positions)
+            ## Geometric Intersection
+            # Point Stamp
+            point_msg = PointStamped()
+            point_msg.header.stamp = rospy.Time.now()
+            point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
+            
+            # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
+            y_offset = 0.35
+            target_x = max(0.3, z)
+            if target_x == 0.3:
+                target_x = 1.5
+                target_y = 0.75
+                target_z = 0
+            else:
+                target_y = -x + y_offset
+                target_z = -y
+            point_msg.point.x = target_x
+            point_msg.point.y = target_y
+            point_msg.point.z = target_z
+            print("Chest_cam_px", chest_cam_px)
+            print("Point", target_x, target_y, target_z)
+            # Publish
+            self.point_pub.publish(point_msg)
 
-                # Calculation
-                dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
-                dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
-                dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
-                dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
+            # Angles Calculation
+            left_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='lefteye',
+                                                pts=[target_x, target_y, target_z])
+            right_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='righteye',
+                                                pts=[target_x, target_y, target_z])
+            cyclops_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='eyes',
+                                                pts=[target_x, target_y, target_z])
+            eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
+            left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
+            right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
+            rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
+            rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
+            rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
+            
+            # Publish Joint States
+            joints = ['eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
+            positions = [eyes_tilt, left_pan, right_pan]
+            self.publish_joint_state(joints, positions)
+
+            # Calculation
+            dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
+            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
+            dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
+            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
 
  
             # Visualize the Previous Target
@@ -340,6 +342,11 @@ class VisuoMotorNode(object):
                 # rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
                 rospy.loginfo(f"--------------")
             
+            # Output of the Geometric Intersection
+            theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
+            theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
+            theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
+
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
