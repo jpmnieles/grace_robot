@@ -95,6 +95,7 @@ class VisuoMotorNode(object):
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
 
         self.chess_idx = 0
+        self.ctr = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
@@ -170,10 +171,13 @@ class VisuoMotorNode(object):
             # Random Target
             # self.chess_idx = random.randint(0,53)
             # self.chess_idx = 7  # For calibration
-            if self.chess_idx == 53:
-                self.chess_idx = 0
-            else:
-                self.chess_idx += 1
+            if self.ctr%2 == 0: 
+                if self.chess_idx == 53:
+                    self.chess_idx = 0
+                    self.ctr = -1
+                else:
+                    self.chess_idx += 1
+            self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
