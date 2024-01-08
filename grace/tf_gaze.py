@@ -12,7 +12,7 @@ import message_filters
 from hr_msgs.msg import TargetPosture, MotorStateList
 from rospy_message_converter import message_converter
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32, String, Header
+from std_msgs.msg import Float64MultiArray, String, Header
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import PointStamped
 
@@ -58,6 +58,7 @@ class VisuoMotorNode(object):
     def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
+        self.action_lock = threading.Lock()
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
@@ -75,6 +76,8 @@ class VisuoMotorNode(object):
         self.bridge = CvBridge()
         time.sleep(1)
 
+        self.action = None
+
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
@@ -83,6 +86,7 @@ class VisuoMotorNode(object):
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, 
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
+        self.action_sub = rospy.Subscriber('/grace/action', Float64MultiArray, self._action_callback, queue_size=1)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
@@ -93,6 +97,10 @@ class VisuoMotorNode(object):
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
+
+    def _action_callback(self, msg):
+        with self.action_lock:
+            self.action = msg.data
 
     def publish_joint_state(self, names, values):
         joint_state = JointState()
@@ -151,6 +159,7 @@ class VisuoMotorNode(object):
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
         if elapsed_time > 285e-3:
+            start = time.time()
             print('--------------')
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
@@ -290,6 +299,16 @@ class VisuoMotorNode(object):
 
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
+            end = time.time()
+            print('[ELAPSED_TIME]', (end-start)*1000, 'msecs')
+            # Wait for the new command
+
+            with self.action_lock:
+                if self.action != None:
+                    theta_l_pan = self.action[0]
+                    theta_r_pan = self.action[1]
+                    theta_tilt = self.action[2]
+
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
                 self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
