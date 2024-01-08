@@ -34,36 +34,20 @@ from grace.attention import *
 
 
 class VisuoMotorNode(object):
-    
-    state_buffer = {
-        't-1': {
-            'chest_cam_px': None,
-            'left_eye_px': None,
-            'right_eye_px': None,
-            'theta_left_pan': None,
-            'theta_right_pan': None,
-            'theta_tilt': None,
-        },
-        't': {
-            'chest_cam_px': None,
-            'left_eye_px': None,
-            'right_eye_px': None,
-            'theta_left_pan': None,
-            'theta_right_pan': None,
-        }
-    }
 
-    camera_buffer = {
-        't-1': {
-            'left_eye': np.zeros((480,640,3), dtype=np.uint8),
-            'right_eye': np.zeros((480,640,3), dtype=np.uint8),
-            'chest_cam': np.zeros((480,848,3), dtype=np.uint8),
-        },
-        't': {
-            'left_eye': np.zeros((480,640,3), dtype=np.uint8),
-            'right_eye': np.zeros((480,640,3), dtype=np.uint8),
-            'chest_cam': np.zeros((480,848,3), dtype=np.uint8),
-        },
+    rl_state = {  # RL environment on the network takes care of the other side
+        'theta_left_pan': None,
+        'theta_right_pan': None,
+        'theta_tilt': None,
+        'chest_cam_px': None, 
+        'left_eye_px': None,
+        'right_eye_px': None,
+        'plan_phi_left_pan': None,
+        'plan_phi_right_pan': None,
+        'plan_phi_tilt': None,
+        'chest_img_stamp': None,
+        'left_eye_img_stamp': None,
+        'right_eye_img_stamp': None,
     }
 
     joints_list = ['neck_roll', 'neck_pitch', 'neck_yaw',
@@ -184,14 +168,6 @@ class VisuoMotorNode(object):
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
 
-            # Snapshot
-            self.camera_buffer['t-1']['left_eye'] = copy.deepcopy(self.camera_buffer['t']['left_eye'])
-            self.camera_buffer['t']['left_eye'] = copy.deepcopy(self.left_img)
-            self.camera_buffer['t-1']['right_eye'] = copy.deepcopy(self.camera_buffer['t']['right_eye'])
-            self.camera_buffer['t']['right_eye'] = copy.deepcopy(self.right_img)
-            self.camera_buffer['t-1']['chest_cam'] = copy.deepcopy(self.camera_buffer['t']['chest_cam'])
-            self.camera_buffer['t']['chest_cam'] = copy.deepcopy(self.right_img)
-
             ## Attention ##
             
             # Random Target
@@ -299,38 +275,21 @@ class VisuoMotorNode(object):
                 # Get Motor State
                 with self.motor_lock:
                     self.calibration.store_latest_state(self._motor_states)
-                    self.state_buffer['t-1'] = copy.deepcopy(self.state_buffer['t'])
-                    self.state_buffer['t']['chest_cam_px'] = chest_cam_px
-                    self.state_buffer['t']['left_eye_px'] = left_eye_px
-                    self.state_buffer['t']['right_eye_px'] = right_eye_px
-                    self.state_buffer['t']['theta_left_pan'] = self._motor_states[0]['angle']
-                    self.state_buffer['t']['theta_right_pan'] = self._motor_states[1]['angle']
-                    self.state_buffer['t']['theta_tilt'] = self._motor_states[2]['angle']
-                    # rospy.loginfo(str(self.state_buffer))
-                
-                # Calibration Algorithm
-                theta_l_pan, theta_l_tilt = self.calibration.compute_left_eye_cmd(dx_l, dy_l)
-                theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
-                theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
-                self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
 
-                # # Print Info
-                # rospy.loginfo(str(self._motor_states))
-                # rospy.loginfo(f"dx_l: {dx_l: .{4}f}")
-                # rospy.loginfo(f"dy_l: {dy_l: .{4}f}")
-                # rospy.loginfo(f"dx_r: {dx_r: .{4}f}")
-                # rospy.loginfo(f"dy_r: {dy_r: .{4}f}")
-                # rospy.loginfo(f"theta_l_pan_t: {self.calibration.buffer['t']['state']['EyeTurnLeft']['angle']: .{4}f}")
-                # rospy.loginfo(f"theta_r_pan_t: {self.calibration.buffer['t']['state']['EyeTurnRight']['angle']: .{4}f}")
-                # rospy.loginfo(f"theta_tilt_t: {self.calibration.buffer['t']['state']['EyesUpDown']['angle']: .{4}f}")
-                # rospy.loginfo(f"theta_l_pan_cmd:: {theta_l_pan: .{4}f}")
-                # rospy.loginfo(f"theta_r_pan_cmd: {theta_r_pan: .{4}f}")
-                # rospy.loginfo(f"theta_tilt:_cmd: {theta_tilt: .{4}f}")
-                # rospy.loginfo(f"eta_tminus1_l_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnLeft']: .{4}f}")
-                # rospy.loginfo(f"eta_t_l_pan: {self.calibration.buffer['t']['hidden']['EyeTurnLeft']: .{4}f}")
-                # rospy.loginfo(f"eta_tminus1_r_pan: {self.calibration.buffer['t-1']['hidden']['EyeTurnRight']: .{4}f}")
-                # rospy.loginfo(f"eta_t_r_pan: {self.calibration.buffer['t']['hidden']['EyeTurnRight']: .{4}f}")
-                rospy.loginfo(f"--------------")
+                    self.rl_state['chest_cam_px'] = chest_cam_px
+                    self.rl_state['left_eye_px'] = left_eye_px
+                    self.rl_state['right_eye_px'] = right_eye_px
+                    self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
+                    self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
+                    self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
+                    self.rl_state['plan_phi_left_pan'] = -left_pan
+                    self.rl_state['plan_phi_right_pan'] = -right_pan
+                    self.rl_state['plan_phi_tilt'] = eyes_tilt
+                    self.rl_state['chest_img_stamp'] = chest_img_msg.header.stamp.to_sec()
+                    self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
+                    self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
+                    print(self.rl_state)
+
             
             # Output of the Geometric Intersection
             theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
@@ -359,7 +318,7 @@ class VisuoMotorNode(object):
             self.chess_idx_tminus1 = self.chess_idx
 
             # Publish States
-            json_str = json.dumps(self.state_buffer)
+            json_str = json.dumps(self.rl_state)
             message = String()
             message.data = json_str
 
