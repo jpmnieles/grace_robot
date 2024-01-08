@@ -185,8 +185,7 @@ class VisuoMotorNode(object):
             
             # Random Target
             # chess_idx = random.randint(0,17)
-            chess_idx = 7
-            self.set_chess_idx(chess_idx)
+            # self.set_chess_idx(chess_idx)
             
             # For calibration
             # self.chess_idx = 7

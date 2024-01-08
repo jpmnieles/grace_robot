@@ -114,4 +114,4 @@ if __name__ == '__main__':
 
     # Test the environment
     env = GraceEnv()
-    env.reset()
+    env.reset(7)
