@@ -17,11 +17,6 @@ from grace.rl_gaze import VisuoMotorNode
 
 class GraceEnv(gym.Env):
 
-    state_buffer = {
-        't': None,
-        't-1': None
-    }
-
     def __init__(self, max_steps=10):
         super(GraceEnv, self).__init__()
 
@@ -42,7 +37,7 @@ class GraceEnv(gym.Env):
         np.random.seed(seed_value)
 
     def reset(self, chess_idx=7):
-        print('reset')
+        rospy.loginfo('Reset')
         self.step_count = 0  # Step count
         self.grace.set_chess_idx(chess_idx)
         rospy.sleep(1)
@@ -79,39 +74,71 @@ class GraceEnv(gym.Env):
             math.radians(t_state['plan_phi_right_pan']),
             math.radians(t_state['plan_phi_tilt'])
         ])
-        self.state_buffer['t-1'] = state
-        self.state_buffer['t'] = state
-        
         return state
 
-    def step(self, action=0):
+    def step(self, action=[0,0,0]):
         self.step_count += 1  # Step count
-        # reward = -np.abs(self.target_phi - self.current_phi)  # Negative absolute difference between the current y and the target y
-        reward = 0
-
+        
         print('=============')
         with self.grace.buffer_lock:
-            print('PREV_STATE:', self.grace.rl_state)
-        action = [random.randint(-8,8), random.randint(-8,8), random.randint(-8,8)]
+            tminus_state = self.grace.rl_state
+        t_state = tminus_state
+        # action = [random.randint(-8,8), random.randint(-8,8), random.randint(-8,8)]
         print('Action:', action)
 
+
         self.grace.set_action(action)
-        print('set_action')
         rospy.sleep(1)
 
         with self.grace.buffer_lock:
-            print('NEXT_STATE:', self.grace.rl_state)
-        print('=============')
+            t_state = self.grace.rl_state
+
+        state = np.array([
+            math.radians(tminus_state['theta_left_pan']),
+            math.radians(tminus_state['theta_right_pan']),
+            math.radians(tminus_state['theta_tilt']),
+            tminus_state['chest_cam_px'][0]/848,
+            tminus_state['chest_cam_px'][1]/480,
+            tminus_state['left_eye_px'][0]/640,
+            tminus_state['left_eye_px'][1]/480,
+            tminus_state['right_eye_px'][0]/640,
+            tminus_state['right_eye_px'][1]/480,
+            tminus_state['plan_phi_left_pan'],
+            tminus_state['plan_phi_right_pan'],
+            tminus_state['plan_phi_tilt'],
+            math.radians(t_state['theta_left_pan']),
+            math.radians(t_state['theta_right_pan']),
+            math.radians(t_state['theta_tilt']),
+            t_state['chest_cam_px'][0]/848,
+            t_state['chest_cam_px'][1]/480,
+            t_state['left_eye_px'][0]/640,
+            t_state['left_eye_px'][1]/480,
+            t_state['right_eye_px'][0]/640,
+            t_state['right_eye_px'][1]/480,
+            math.radians(t_state['plan_phi_left_pan']),
+            math.radians(t_state['plan_phi_right_pan']),
+            math.radians(t_state['plan_phi_tilt'])
+        ])
+
+        reward = -(np.abs(t_state['left_eye_px'][0] - self.grace.calib_params['left_eye']['x_center'])
+                   + np.abs(t_state['left_eye_px'][1] - self.grace.calib_params['left_eye']['y_center'])
+                   + np.abs(t_state['right_eye_px'][0] - self.grace.calib_params['right_eye']['x_center'])
+                   + np.abs(t_state['right_eye_px'][1] - self.grace.calib_params['right_eye']['y_center']))/4
 
         done = False
         if self.step_count >= self.max_steps or reward > -0.2:
             done = True
 
-        return np.array([0,0,0]), reward, done, {}
+        return state, reward, done, {}
 
 
 if __name__ == '__main__':
 
     # Test the environment
     env = GraceEnv()
-    env.reset(7)
+    env.reset(0)
+
+    for i in range(10):
+        action = [random.randint(-8,8), random.randint(-8,8), random.randint(-8,8)]
+        vals = env.step(action)
+        print(vals)
