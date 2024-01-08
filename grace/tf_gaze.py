@@ -248,14 +248,12 @@ class VisuoMotorNode(object):
             positions = [eyes_tilt, left_pan, right_pan]
             if target_x != 0.3:
                 self.publish_joint_state(joints, positions)
+                
+                # Output of the Geometric Intersection
+                theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
+                theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
+                theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
 
-            # Calculation
-            dx_l = left_eye_px[0] - self.calib_params['left_eye']['x_center']
-            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px[1]
-            dx_r = right_eye_px[0] - self.calib_params['right_eye']['x_center']
-            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px[1]
-
- 
             # Visualize the Previous Target
             left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
                                 markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
@@ -289,12 +287,6 @@ class VisuoMotorNode(object):
                     self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
                     self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
                     print(self.rl_state)
-
-            
-            # Output of the Geometric Intersection
-            theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
-            theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
-            theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
 
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
