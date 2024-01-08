@@ -55,7 +55,7 @@ class VisuoMotorNode(object):
                    'eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
 
 
-    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=False):
         # Initialization
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
@@ -252,9 +252,9 @@ class VisuoMotorNode(object):
                 self.publish_joint_state(joints, positions)
                 
                 # Output of the Geometric Intersection
-                theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
-                theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
-                theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
+                theta_l_pan = -left_pan/self.calib_params['left_eye']['slope']
+                theta_r_pan = -right_pan/self.calib_params['right_eye']['slope']
+                theta_tilt = eyes_tilt/self.calib_params['tilt_eyes']['slope']
 
             ##  Storing
             with self.buffer_lock:
