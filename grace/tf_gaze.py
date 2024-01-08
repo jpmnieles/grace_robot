@@ -86,7 +86,6 @@ class VisuoMotorNode(object):
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, 
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
-        self.action_sub = rospy.Subscriber('/grace/action', Float64MultiArray, self._action_callback, queue_size=1)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
@@ -98,9 +97,9 @@ class VisuoMotorNode(object):
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
 
-    def _action_callback(self, msg):
+    def set_action(self, action):
         with self.action_lock:
-            self.action = msg.data
+            self.action = action
 
     def publish_joint_state(self, names, values):
         joint_state = JointState()
