@@ -4,6 +4,7 @@ from sensor_msgs.msg import JointState, Image
 
 import json
 import time
+import math
 import random
 import threading
 
@@ -16,7 +17,10 @@ from grace.rl_gaze import VisuoMotorNode
 
 class GraceEnv(gym.Env):
 
-    state = None
+    state_buffer = {
+        't': None,
+        't-1': None
+    }
 
     def __init__(self, max_steps=10):
         super(GraceEnv, self).__init__()
@@ -37,12 +41,48 @@ class GraceEnv(gym.Env):
         self.seed_value = seed_value
         np.random.seed(seed_value)
 
-    def reset(self):
+    def reset(self, chess_idx=7):
+        print('reset')
         self.step_count = 0  # Step count
-        self.current_phi = self.m * self.current_eta
-        self.target_phi = np.random.uniform(self.m*-13, self.m*13)
-        self.delta_phi = self.target_phi - self.current_phi
-        return np.array([self.current_theta, self.current_eta, self.delta_phi])
+        self.grace.set_chess_idx(chess_idx)
+        rospy.sleep(1)
+        self.grace.set_action(None)
+        rospy.sleep(1)
+
+        with self.grace.buffer_lock:
+            tminus_state = self.grace.rl_state
+            print(self.grace.rl_state)
+        t_state = tminus_state
+        state = np.array([
+            math.radians(tminus_state['theta_left_pan']),
+            math.radians(tminus_state['theta_right_pan']),
+            math.radians(tminus_state['theta_tilt']),
+            tminus_state['chest_cam_px'][0]/848,
+            tminus_state['chest_cam_px'][1]/480,
+            tminus_state['left_eye_px'][0]/640,
+            tminus_state['left_eye_px'][1]/480,
+            tminus_state['right_eye_px'][0]/640,
+            tminus_state['right_eye_px'][1]/480,
+            tminus_state['plan_phi_left_pan'],
+            tminus_state['plan_phi_right_pan'],
+            tminus_state['plan_phi_tilt'],
+            math.radians(t_state['theta_left_pan']),
+            math.radians(t_state['theta_right_pan']),
+            math.radians(t_state['theta_tilt']),
+            t_state['chest_cam_px'][0]/848,
+            t_state['chest_cam_px'][1]/480,
+            t_state['left_eye_px'][0]/640,
+            t_state['left_eye_px'][1]/480,
+            t_state['right_eye_px'][0]/640,
+            t_state['right_eye_px'][1]/480,
+            math.radians(t_state['plan_phi_left_pan']),
+            math.radians(t_state['plan_phi_right_pan']),
+            math.radians(t_state['plan_phi_tilt'])
+        ])
+        self.state_buffer['t-1'] = state
+        self.state_buffer['t'] = state
+        
+        return state
 
     def step(self, action=0):
         self.step_count += 1  # Step count
@@ -74,6 +114,4 @@ if __name__ == '__main__':
 
     # Test the environment
     env = GraceEnv()
-    while not rospy.is_shutdown():
-        env.step()
-        rospy.sleep(0.5)
+    env.reset()
