@@ -56,28 +56,39 @@ class VisuoMotorNode(object):
 
 
     def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+        # Initialization
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
         self.action_lock = threading.Lock()
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
+        self.calib_params = load_json('config/calib/calib_params.json')
 
-        self.attention = ChessboardAttention()
-        self.calibration = BaselineCalibration(self.buffer_lock)  # RL Model
-        self.calibration.toggle_backlash(True)
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
+        self.ctr = 0
+        self.chess_idx = 0
         self.chess_idx_tminus1 = 0
+        self.action = None
 
+        # Select Attention
+        self.attention = ChessboardAttention()
+
+        # Select Calibration
+        self.calibration = BaselineCalibration(self.buffer_lock)  # RL Model
+        self.calibration.toggle_backlash(True)
+        
+        # Publishers
         self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
         time.sleep(1)
+        self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
+        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
 
-        self.action = None
-
+        # Subscribers
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
         self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
         self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
@@ -86,15 +97,8 @@ class VisuoMotorNode(object):
         self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, 
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
-        self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
-        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         self.tf_listener = tf.TransformListener()
-
-        self.chess_idx = 0
-        self.ctr = 0
-        self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
-        self.calib_params = load_json('config/calib/calib_params.json')
+        
         rospy.loginfo('Running')
 
     def set_action(self, action):
@@ -117,10 +121,6 @@ class VisuoMotorNode(object):
             if x.name in self.names:
                 eye_motors_list.append(idx)
         if len(eye_motors_list) == 3:
-            # rospy.loginfo('Complete')
-            # rospy.loginfo(msg.motor_states[eye_motors_list[0]])
-            # rospy.loginfo(msg.motor_states[eye_motors_list[1]])
-            # rospy.loginfo(msg.motor_states[eye_motors_list[2]])
             with self.motor_lock:
                 for i in range(self.num_names):
                     motor_msg = msg.motor_states[eye_motors_list[i]]
@@ -128,7 +128,6 @@ class VisuoMotorNode(object):
                     self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
                     self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
         else:
-            # rospy.loginfo('Incomplete')
             pass
 
     def depth_to_pointcloud(self, px, depth_img):
@@ -174,7 +173,6 @@ class VisuoMotorNode(object):
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
-            # print(self.depth_img)
 
             ## Attention ##
             
@@ -222,9 +220,8 @@ class VisuoMotorNode(object):
             point_msg = PointStamped()
             point_msg.header.stamp = rospy.Time.now()
             point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)  # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
             
-            # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
             y_offset = 0.35
             target_x = max(0.3, z)
             target_y = -x + y_offset
@@ -232,9 +229,6 @@ class VisuoMotorNode(object):
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
-            print("Chest_cam_px", chest_cam_px)
-            print("Point", target_x, target_y, target_z)
-            # Publish
             self.point_pub.publish(point_msg)
 
             # Angles Calculation
@@ -262,21 +256,7 @@ class VisuoMotorNode(object):
                 theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
                 theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
 
-            # Visualize the Previous Target
-            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
-                                markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
-            left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
-                                markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
-                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
-                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
-                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
-                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-
-            # Storing
+            ##  Storing
             with self.buffer_lock:
                 # Get Motor State
                 with self.motor_lock:
@@ -311,6 +291,20 @@ class VisuoMotorNode(object):
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
                 self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
+
+            # Visualize the Previous Target
+            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
+                                markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
+            left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
+                                markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
+                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
+            right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
+                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
+                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
+            chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
+                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
@@ -326,14 +320,6 @@ class VisuoMotorNode(object):
 
             # Reassigning
             self.chess_idx_tminus1 = self.chess_idx
-
-            # Publish States
-            json_str = json.dumps(self.rl_state)
-            message = String()
-            message.data = json_str
-
-            # Publish the message
-            self.state_pub.publish(message)
 
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
