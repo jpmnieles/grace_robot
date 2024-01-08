@@ -11,7 +11,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-from grace.tf_gaze import VisuoMotorNode
+from grace.rl_gaze import VisuoMotorNode
 
 
 class GraceEnv(gym.Env):
@@ -76,4 +76,4 @@ if __name__ == '__main__':
     env = GraceEnv()
     while not rospy.is_shutdown():
         env.step()
-        rospy.sleep(2)
+        rospy.sleep(0.5)
