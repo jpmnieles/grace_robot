@@ -59,6 +59,7 @@ class VisuoMotorNode(object):
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
         self.action_lock = threading.Lock()
+        self.chess_idx_lock = threading.Lock()
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
@@ -96,6 +97,10 @@ class VisuoMotorNode(object):
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
         rospy.loginfo('Running')
+
+    def set_chess_idx(self, chess_idx):
+        with self.chess_idx_lock:
+            self.chess_idx = chess_idx
 
     def set_action(self, action):
         with self.action_lock:
@@ -179,7 +184,9 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            self.chess_idx = random.randint(0,17)
+            # chess_idx = random.randint(0,17)
+            chess_idx = 7
+            self.set_chess_idx(chess_idx)
             
             # For calibration
             # self.chess_idx = 7
@@ -203,7 +210,7 @@ class VisuoMotorNode(object):
                 dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
                 left_eye_px = (self.calib_params['left_eye']['x_center'], self.calib_params['left_eye']['y_center'])
                 right_eye_px = (self.calib_params['right_eye']['x_center'], self.calib_params['right_eye']['y_center'])
-                chest_cam_px = (240, 424)
+                chest_cam_px = (424, 240)
                 left_eye_px_tminus1 = left_eye_px
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
