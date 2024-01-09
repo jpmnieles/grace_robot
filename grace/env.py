@@ -139,6 +139,6 @@ if __name__ == '__main__':
     env.reset(0)
 
     for i in range(10):
-        action = [random.randint(-8,8), random.randint(-8,8), random.randint(-8,8)]
+        action = [random.randint(-8,8), random.randint(-8,8), random.randint(-31,0)]
         vals = env.step(action)
         print(vals)
