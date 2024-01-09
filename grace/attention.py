@@ -16,6 +16,7 @@ class PeopleAttention(object):
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(os.path.join(os.getcwd(),'pretrained','shape_predictor_68_face_landmarks.dat'))
         dlib.cuda.set_device(0)
+        self.calib_params = load_json('config/calib/calib_params.json')
 
     def register_imgs(self, left_img, right_img):
         self.left_img = left_img
@@ -50,8 +51,8 @@ class PeopleAttention(object):
         landmarks = self.predictor(img, detection)
         x_target = landmarks.part(30).x
         y_target = landmarks.part(30).y
-        delta_x = x_target - self.camera_mtx[eye]['cx']
-        delta_y =  self.camera_mtx[eye]['cy'] - y_target
+        delta_x = x_target - self.calib_params[eye]['x_center']
+        delta_y =  self.calib_params[eye]['y_center'] - y_target
         return delta_x, delta_y
     
     def visualize_target(self, delta_x, delta_y, img, id:int, eye:str):
@@ -62,8 +63,8 @@ class PeopleAttention(object):
         elif eye == 'right_eye':
             detection = self.r_detections[id]
         cv2.rectangle(img, (detection.left(), detection.top()), (detection.right(), detection.bottom()), (0, 0, 255), 2)
-        abs_x = self.camera_mtx[eye]['cx'] + delta_x
-        abs_y = self.camera_mtx[eye]['cy'] - delta_y
+        abs_x = self.calib_params[eye]['x_center'] + delta_x
+        abs_y = self.calib_params[eye]['y_center'] - delta_y
         disp_img = cv2.drawMarker(img, (round(abs_x),round(abs_y)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
         return disp_img
 

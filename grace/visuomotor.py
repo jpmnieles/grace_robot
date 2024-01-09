@@ -48,6 +48,7 @@ class VisuoMotorNode(object):
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
+        self.calib_params = load_json('config/calib/calib_params.json')
 
         self.attention = PeopleAttention()
         self.calibration = BaselineCalibration(self.buffer_lock)
@@ -195,14 +196,14 @@ class VisuoMotorNode(object):
         right_img_t = self.ctr_cross_img(copy.deepcopy(self.camera_buffer['t']['right_eye']), 'right_eye')
 
         # Cropping
-        left_img_tminus1 = left_img_tminus1[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
-                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
+        left_img_tminus1 = left_img_tminus1[round(self.calib_params['left_eye']['y_center'])-120:round(self.calib_params['left_eye']['y_center'])+120,
+                                             round(self.calib_params['left_eye']['x_center'])-160: round(self.calib_params['left_eye']['x_center'])+160]
         cv2.putText(left_img_tminus1, 'Left Eye (t-1)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         right_img_tminus1 = right_img_tminus1[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
                                         round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
         cv2.putText(right_img_tminus1, 'Right Eye (t-1)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        left_img_t = left_img_t[round(self.camera_mtx['left_eye']['cy'])-120:round(self.camera_mtx['left_eye']['cy'])+120,
-                                             round(self.camera_mtx['left_eye']['cx'])-160: round(self.camera_mtx['left_eye']['cx'])+160]
+        left_img_t = left_img_t[round(self.calib_params['left_eye']['y_center'])-120:round(self.calib_params['left_eye']['y_center'])+120,
+                                             round(self.calib_params['left_eye']['x_center'])-160: round(self.calib_params['left_eye']['x_center'])+160]
         cv2.putText(left_img_t, 'Left Eye (t)', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         right_img_t= right_img_t[round(self.camera_mtx['right_eye']['cy'])-120:round(self.camera_mtx['right_eye']['cy'])+120,
                                         round(self.camera_mtx['right_eye']['cx'])-160: round(self.camera_mtx['right_eye']['cx'])+160]
@@ -253,9 +254,9 @@ class VisuoMotorNode(object):
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye']
         """
-        img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
-        img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (640, round(self.camera_mtx[eye]['cy'])), (0,255,0))
-        img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+        img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
+        img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
+        img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         return img
 
 
