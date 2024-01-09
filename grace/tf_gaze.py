@@ -131,7 +131,7 @@ class VisuoMotorNode(object):
             # rospy.loginfo('Incomplete')
             pass
 
-    def depth_to_pointcloud(self, px, depth_img):
+    def depth_to_pointcloud(self, px, depth_img, z_replace=1.5):
         fx = self.camera_mtx['chest_cam']['fx']
         cx = self.camera_mtx['chest_cam']['cx']
         fy = self.camera_mtx['chest_cam']['fy']
@@ -139,9 +139,21 @@ class VisuoMotorNode(object):
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
+        if z==0:
+            z = z_replace
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
-        return (x,y,z)
+        
+        # Intel Realsense Camera Link
+        pts = [x,y,z]
+        (trans,rot) = self.tf_listener.lookupTransform('camera_link', 'camera_aligned_depth_to_color_frame', rospy.Time(0))
+        transformation_matrix = translation_matrix(trans)
+        rotation_matrix = quaternion_matrix(rot)
+        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
+        new_x = transformed_point[0, 3]
+        new_y = transformed_point[1, 3]
+        new_z = transformed_point[2, 3]
+        return (new_x,new_y,new_z)
     
     def transform_point(self, source_frame, target_frame, pts:list):
         (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
@@ -179,19 +191,19 @@ class VisuoMotorNode(object):
             ## Attention ##
             
             # Random Target
-            self.chess_idx = random.randint(0,17)
+            # self.chess_idx = random.randint(0,53)
             
             # For calibration
-            # self.chess_idx = 7
+            # self.chess_idx = 52
 
             # Sequential  
-            # if self.ctr%2 == 0: 
-            #     if self.chess_idx == 17:
-            #         self.chess_idx = 0
-            #         self.ctr = -1
-            #     else:
-            #         self.chess_idx += 1
-            # self.ctr+=1
+            if self.ctr%2 == 0: 
+                if self.chess_idx == 53:
+                    self.chess_idx = 0
+                    self.ctr = -1
+                else:
+                    self.chess_idx += 1
+            self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
@@ -229,13 +241,15 @@ class VisuoMotorNode(object):
             point_msg = PointStamped()
             point_msg.header.stamp = rospy.Time.now()
             point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img)
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.52)
             
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            y_offset = 0.35
+            y_offset = 0.328
+            y_offset = 0
+            z_offset = 0
             target_x = max(0.3, z)
             target_y = -x + y_offset
-            target_z = -y
+            target_z = -y + z_offset
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
@@ -259,9 +273,12 @@ class VisuoMotorNode(object):
             rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
             
             # Publish Joint States
-            joints = ['eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
-            positions = [eyes_tilt, left_pan, right_pan]
             if target_x != 0.3:
+                joints = ['eyes_pitch']
+                positions = [eyes_tilt]
+                self.publish_joint_state(joints, positions)
+                joints = ['lefteye_yaw', 'righteye_yaw']
+                positions = [left_pan, right_pan]
                 self.publish_joint_state(joints, positions)
                 
                 # Output of the Geometric Intersection
