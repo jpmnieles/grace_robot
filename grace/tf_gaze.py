@@ -199,14 +199,21 @@ class VisuoMotorNode(object):
             chest_cam_pxs = self.attention.process_img(self.chess_idx, self.chest_img)
 
             # Calculate Delta between Gaze Center and Pixel Target
-            if left_eye_pxs is None or right_eye_pxs is None or chest_cam_pxs is None:
-                dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
-                left_eye_px = (self.calib_params['left_eye']['x_center'], self.calib_params['left_eye']['y_center'])
-                right_eye_px = (self.calib_params['right_eye']['x_center'], self.calib_params['right_eye']['y_center'])
-                chest_cam_px = (240, 424)
+            if chest_cam_pxs is None:
+                left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
+                right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
+                chest_cam_px = (424, 240)
                 left_eye_px_tminus1 = left_eye_px
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
+            elif left_eye_pxs is None or right_eye_pxs is None:
+                dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
+                left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
+                right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
+                chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
+                left_eye_px_tminus1 = left_eye_px
+                right_eye_px_tminus1 = right_eye_px
+                chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
             else:
                 # Preprocessing
                 left_eye_px = tuple(left_eye_pxs[self.chess_idx].tolist())
