@@ -146,6 +146,8 @@ class VisuoMotorNode(object):
         cx = self.camera_mtx['chest_cam']['cx']
         fy = self.camera_mtx['chest_cam']['fy']
         cy = self.camera_mtx['chest_cam']['cy']
+        cx = 434
+        cy = 218
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
@@ -224,11 +226,9 @@ class VisuoMotorNode(object):
             x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.5)
             
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            y_offset = 0.2
-            z_offset = 0
             target_x = max(0.3, z)
-            target_y = -x + y_offset
-            target_z = -y + z_offset
+            target_y = -x
+            target_z = -y
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
