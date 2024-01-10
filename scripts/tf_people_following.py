@@ -221,10 +221,10 @@ class VisuoMotorNode(object):
             point_msg = PointStamped()
             point_msg.header.stamp = rospy.Time.now()
             point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.52)
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.5)
             
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            y_offset = 0.328
+            y_offset = 0.2
             z_offset = 0
             target_x = max(0.3, z)
             target_y = -x + y_offset
@@ -233,7 +233,7 @@ class VisuoMotorNode(object):
             point_msg.point.y = target_y
             point_msg.point.z = target_z
             # print("Chest_cam_px", chest_cam_px)
-            # print("Point", target_x, target_y, target_z)
+            print("Point", target_x, target_y, target_z)
             # Publish
             self.point_pub.publish(point_msg)
 

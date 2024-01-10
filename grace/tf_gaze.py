@@ -199,16 +199,16 @@ class VisuoMotorNode(object):
             # self.chess_idx = random.randint(0,53)
             
             # For calibration
-            # self.chess_idx = 52
+            self.chess_idx = 51
 
             # Sequential  
-            if self.ctr%2 == 0: 
-                if self.chess_idx == 53:
-                    self.chess_idx = 0
-                    self.ctr = -1
-                else:
-                    self.chess_idx += 1
-            self.ctr+=1
+            # if self.ctr%2 == 0: 
+            #     if self.chess_idx == 53:
+            #         self.chess_idx = 0
+            #         self.ctr = -1
+            #     else:
+            #         self.chess_idx += 1
+            # self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
@@ -246,10 +246,10 @@ class VisuoMotorNode(object):
             point_msg = PointStamped()
             point_msg.header.stamp = rospy.Time.now()
             point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.52)
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.5)
             
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            y_offset = 0.328
+            y_offset = 0.2
             z_offset = 0
             target_x = max(0.3, z)
             target_y = -x + y_offset
