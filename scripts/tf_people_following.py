@@ -88,7 +88,6 @@ class VisuoMotorNode(object):
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.state_pub = rospy.Publisher('/grace/state', String, queue_size=1)
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         self.tf_listener = tf.TransformListener()
 
@@ -208,8 +207,8 @@ class VisuoMotorNode(object):
             if len(c_detections) > 0:
                 c_detection = c_detections[0]
                 landmarks = self.predictor(c_gray, c_detection)
-                x_target = landmarks.part(30).x
-                y_target = landmarks.part(30).y
+                x_target = landmarks.part(28).x
+                y_target = landmarks.part(28).y
                 chest_cam_px = (x_target, y_target)
                 chest_img = cv2.rectangle(copy.deepcopy(self.chest_img), (c_detection.left(), c_detection.top()), 
                               (c_detection.right(), c_detection.bottom()), (0, 0, 255), 2)
@@ -217,6 +216,32 @@ class VisuoMotorNode(object):
             else:
                 chest_cam_px = (424, 240)
                 chest_img = self.chest_img
+
+            if len(l_detections) > 0:
+                l_detection = l_detections[0]
+                landmarks = self.predictor(l_gray, l_detection)
+                x_target = landmarks.part(28).x
+                y_target = landmarks.part(28).y
+                left_eye_px = (x_target, y_target)
+                left_img = cv2.rectangle(copy.deepcopy(self.left_img), (l_detection.left(), l_detection.top()), 
+                              (l_detection.right(), l_detection.bottom()), (0, 0, 255), 2)
+                left_img = cv2.drawMarker(left_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            else:
+                left_eye_px = (-4, -4)
+                left_img = self.left_img
+            
+            if len(r_detections) > 0:
+                r_detection = r_detections[0]
+                landmarks = self.predictor(r_gray, r_detection)
+                x_target = landmarks.part(28).x
+                y_target = landmarks.part(28).y
+                right_eye_px = (x_target, y_target)
+                right_img = cv2.rectangle(copy.deepcopy(self.right_img), (r_detection.left(), r_detection.top()), 
+                              (r_detection.right(), r_detection.bottom()), (0, 0, 255), 2)
+                right_img = cv2.drawMarker(right_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            else:
+                right_eye_px = (-4, -4)
+                right_img = self.right_img
 
             ## Geometric Intersection
             # Point Stamp
@@ -273,8 +298,8 @@ class VisuoMotorNode(object):
                     self.calibration.store_latest_state(self._motor_states)
 
                     self.rl_state['chest_cam_px'] = chest_cam_px
-                    # self.rl_state['left_eye_px'] = left_eye_px
-                    # self.rl_state['right_eye_px'] = right_eye_px
+                    self.rl_state['left_eye_px'] = left_eye_px
+                    self.rl_state['right_eye_px'] = right_eye_px
                     self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
                     self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
                     self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
@@ -295,8 +320,8 @@ class VisuoMotorNode(object):
                 self.move((theta_l_pan, theta_r_pan, theta_tilt))
 
             # Visualization
-            left_img = self.ctr_cross_img(self.left_img, 'left_eye')
-            right_img = self.ctr_cross_img(self.right_img, 'right_eye')
+            left_img = self.ctr_cross_img(left_img, 'left_eye')
+            right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
             concat_img = np.hstack((chest_img, left_img, right_img))
             
@@ -309,14 +334,6 @@ class VisuoMotorNode(object):
 
             # Reassigning
             self.chess_idx_tminus1 = self.chess_idx
-
-            # Publish States
-            json_str = json.dumps(self.rl_state)
-            message = String()
-            message.data = json_str
-
-            # Publish the message
-            self.state_pub.publish(message)
 
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
