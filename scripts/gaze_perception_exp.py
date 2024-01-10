@@ -110,6 +110,8 @@ class VisuoMotorNode(object):
         self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         self.tf_listener = tf.TransformListener()
 
+        self.key_press_sub = rospy.Subscriber('key_press', String, self._key_press_callback)
+
         self.chess_idx = 0
         self.ctr = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
@@ -120,6 +122,12 @@ class VisuoMotorNode(object):
         dlib.cuda.set_device(0)
 
         rospy.loginfo('Running')
+
+    def _key_press_callback(self, event):
+        if event.data == '`':  # Replace 'a' with the desired key
+            rospy.loginfo("Key '`' pressed")
+            val = input('Enter Value: ')
+            print(val)
 
     def set_action(self, action):
         with self.action_lock:
@@ -197,8 +205,8 @@ class VisuoMotorNode(object):
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
         if elapsed_time > 285e-3:
             start = time.time()
-            print('--------------')
-            rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
+            # print('--------------')
+            # rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
 
             # Initialization
@@ -290,8 +298,8 @@ class VisuoMotorNode(object):
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
-            print("Chest_cam_px", chest_cam_px)
-            print("Point", target_x, target_y, target_z)
+            # print("Chest_cam_px", chest_cam_px)
+            # print("Point", target_x, target_y, target_z)
             # Publish
             self.point_pub.publish(point_msg)
 
@@ -305,9 +313,9 @@ class VisuoMotorNode(object):
             eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
             left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
             right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
-            rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
-            rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
-            rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
+            # rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
+            # rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
+            # rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
             
             # Publish Joint States
             if target_x != 0.3:
@@ -347,7 +355,7 @@ class VisuoMotorNode(object):
                     self.rl_state['chest_img_stamp'] = chest_img_msg.header.stamp.to_sec()
                     self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
                     self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
-                    print(self.rl_state)
+                    # print(self.rl_state)
 
                     self.state_list['chest_cam_px_x'].append(chest_cam_px[0])
                     self.state_list['chest_cam_px_y'].append(chest_cam_px[1])
@@ -368,7 +376,7 @@ class VisuoMotorNode(object):
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
             end = time.time()
-            print('[ELAPSED_TIME]', (end-start)*1000, 'msecs')
+            # print('[ELAPSED_TIME]', (end-start)*1000, 'msecs')
             # Wait for the new command
 
             with self.action_lock:
