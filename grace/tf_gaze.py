@@ -185,6 +185,11 @@ class VisuoMotorNode(object):
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
+            depth_map_normalized = self.depth_img / self.depth_img.max()  # Normalize values to [0, 1]
+
+            # Scale the depth values for visualization
+            gray_depth_img = (depth_map_normalized * 255).astype(np.uint8)
+            gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
 
@@ -338,7 +343,7 @@ class VisuoMotorNode(object):
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img))
+            concat_img = np.hstack((chest_img, left_img, right_img, gray_depth_img))
             
             # Resizing
             height, width = concat_img.shape[:2]
