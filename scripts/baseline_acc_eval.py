@@ -54,12 +54,12 @@ class VisuoMotorNode(object):
         'theta_left_pan': [],
         'theta_right_pan': [],
         'theta_tilt': [],
-        'chest_cam_px_dx': [],
-        'chest_cam_px_dy': [],  
-        'left_eye_px_dx': [],
-        'left_eye_px_dy': [],
-        'right_eye_px_dx': [],
-        'right_eye_px_dy': [],
+        'chest_cam_px_x': [],
+        'chest_cam_px_y': [],  
+        'left_eye_px_x': [],
+        'left_eye_px_y': [],
+        'right_eye_px_x': [],
+        'right_eye_px_y': [],
         'plan_phi_left_pan': [],
         'plan_phi_right_pan': [],
         'plan_phi_tilt': [],
@@ -460,5 +460,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(num_ctr=55)
+    vismotor = VisuoMotorNode(num_ctr=5401)
     rospy.spin()
