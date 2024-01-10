@@ -245,7 +245,6 @@ class VisuoMotorNode(object):
             
             # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
             y_offset = 0.328
-            y_offset = 0
             z_offset = 0
             target_x = max(0.3, z)
             target_y = -x + y_offset
