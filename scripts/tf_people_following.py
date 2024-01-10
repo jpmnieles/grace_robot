@@ -156,13 +156,7 @@ class VisuoMotorNode(object):
         
         # Intel Realsense Camera Link
         pts = [x,y,z]
-        (trans,rot) = self.tf_listener.lookupTransform('camera_link', 'camera_aligned_depth_to_color_frame', rospy.Time(0))
-        transformation_matrix = translation_matrix(trans)
-        rotation_matrix = quaternion_matrix(rot)
-        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-        new_x = transformed_point[0, 3]
-        new_y = transformed_point[1, 3]
-        new_z = transformed_point[2, 3]
+        (new_x,new_y,new_z) = self.transform_point('camera_link', 'camera_aligned_depth_to_color_frame', pts)
         return (new_x,new_y,new_z)
     
     def transform_point(self, source_frame, target_frame, pts:list):
