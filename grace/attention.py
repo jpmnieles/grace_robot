@@ -49,8 +49,8 @@ class PeopleAttention(object):
             detection = self.r_detections[id]
             img = self.r_gray
         landmarks = self.predictor(img, detection)
-        x_target = landmarks.part(30).x
-        y_target = landmarks.part(30).y
+        x_target = landmarks.part(28).x
+        y_target = landmarks.part(28).y
         delta_x = x_target - self.calib_params[eye]['x_center']
         delta_y =  self.calib_params[eye]['y_center'] - y_target
         return delta_x, delta_y
