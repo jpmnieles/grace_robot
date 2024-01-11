@@ -75,12 +75,19 @@ class VisuoMotorNode(object):
         'left_eye_px_y': [],
         'right_eye_px_x': [],
         'right_eye_px_y': [],
+        'dx_l': [],
+        'dy_l': [],
+        'dx_r': [],
+        'dy_r': [],
+        '3d_point': [],
+        'chest_angle': [],
         'plan_phi_left_pan': [],
         'plan_phi_right_pan': [],
         'plan_phi_tilt': [],
         'chest_img_stamp': [],
         'left_eye_img_stamp': [],
         'right_eye_img_stamp': [],
+        'depth_img_stamp': [],
     }
 
     joints_list = ['neck_roll', 'neck_pitch', 'neck_yaw',
@@ -89,7 +96,6 @@ class VisuoMotorNode(object):
     
     pickle_data = {
         'subject_num': None,
-        'name': None,
         'markers': [-20, -10, 0, 10, 20],
         'trial_num': None,
         'data': []
@@ -149,7 +155,6 @@ class VisuoMotorNode(object):
         rospy.loginfo('Running')
 
         self.pickle_data['subject_num'] = input('Enter Subject Number: ')
-        self.pickle_data['name'] = input('Enter Subject Name: ')
         self.pickle_data['trial_num'] = input('Enter Trial Number: ')
         self.num_markers = len(self.pickle_data['markers'])
         print('=======Experiment Start=======')
@@ -178,16 +183,30 @@ class VisuoMotorNode(object):
             
             if self.marker == 5:
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                results_dir = os.path.join(parent_dir, 'results')
+                results_dir = os.path.join(parent_dir, 'results','gaze_perception_subj%d'%(eval(self.pickle_data['subject_num'])))
+                if not os.path.exists(results_dir):
+                    os.makedirs(results_dir)
+                    print(f"Directory created: {results_dir}")
+                else:
+                    print(f"Directory already exists: {results_dir}")
+                
                 dt_str = datetime.now().strftime("_%Y%m%d_%H%M%S_%f")
                 title_str = 'perception_exp_subj%d_trial%d' % (eval(self.pickle_data['subject_num']), eval(self.pickle_data['trial_num']))
-                fn_path = os.path.join(results_dir, title_str+dt_str+'.pickle')
+                pickle_path = os.path.join(results_dir, title_str+'_pickle'+dt_str+'.pickle')
 
                 # Saving to Pickle File
-                with open(fn_path, 'wb') as file:
+                with open(pickle_path, 'wb') as file:
                     pickle.dump(self.pickle_data, file)
                 print('=====================')
-                print('File saved in:', fn_path)
+                print('Pickle file saved in:', pickle_path)
+
+                # Saving CSV
+                df = pd.DataFrame(self.state_list)
+
+                # Save DataFrame as CSV
+                csv_path = pickle_path = os.path.join(results_dir, title_str+'_csv'+dt_str+'.csv')
+                df.to_csv(csv_path, index=False)
+                print('CSV file saved:',csv_path)
 
                 rospy.loginfo("Press 'Enter' to shutdown")
                 rospy.signal_shutdown('End')
@@ -471,21 +490,33 @@ class VisuoMotorNode(object):
                     self.rl_state['depth_img_stamp'] = depth_img_msg.header.stamp.to_sec()
                     # print(self.rl_state)
 
+                    # CSV Save
+                    self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
+                    self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
+                    self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
                     self.state_list['chest_cam_px_x'].append(chest_cam_px[0])
                     self.state_list['chest_cam_px_y'].append(chest_cam_px[1])
                     self.state_list['left_eye_px_x'].append(left_eye_px[0])
                     self.state_list['left_eye_px_y'].append(left_eye_px[1])
                     self.state_list['right_eye_px_x'].append(right_eye_px[0])
                     self.state_list['right_eye_px_y'].append(right_eye_px[1])
-                    self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
-                    self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
-                    self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
+
+                    self.state_list['dx_l'].append(dx_l)
+                    self.state_list['dy_l'].append(dy_l)
+                    self.state_list['dx_r'].append(dx_r)
+                    self.state_list['dy_r'].append(dy_r)
+
+                    self.state_list['3d_point'].append((target_x, target_y, target_z))
+                    self.state_list['chest_angle'].append(math.atan2(target_y, target_x))
+
                     self.state_list['plan_phi_left_pan'].append(-left_pan)
                     self.state_list['plan_phi_right_pan'].append(-right_pan)
                     self.state_list['plan_phi_tilt'].append(eyes_tilt)
+
                     self.state_list['chest_img_stamp'].append(chest_img_msg.header.stamp.to_sec())
                     self.state_list['left_eye_img_stamp'].append(left_img_msg.header.stamp.to_sec())
                     self.state_list['right_eye_img_stamp'].append(right_img_msg.header.stamp.to_sec())
+                    self.state_list['depth_img_stamp'].append(depth_img_msg.header.stamp.to_sec())
 
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
