@@ -146,7 +146,7 @@ class VisuoMotorNode(object):
         fy = self.camera_mtx['chest_cam']['fy']
         cy = self.camera_mtx['chest_cam']['cy']
         cx = 434
-        cy = 218
+        cy = 240
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
@@ -381,8 +381,8 @@ class VisuoMotorNode(object):
         
             # Adjusted Center
             img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
-            img = cv2.line(img, (0, 218), (848, 218), (255,0,0))
-            img = cv2.drawMarker(img, (434, 218), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+            img = cv2.line(img, (0, 240), (848, 240), (255,0,0))
+            img = cv2.drawMarker(img, (434, 240), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
