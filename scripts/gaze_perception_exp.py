@@ -98,7 +98,7 @@ class VisuoMotorNode(object):
         'subject_num': None,
         'markers': [-20, -10, 0, 10, 20],
         'trial_num': None,
-        'data': []
+        'data': [],
     }
     marker_list = [-20, -10, 0, 10, 20]
 
@@ -173,7 +173,7 @@ class VisuoMotorNode(object):
                 rospy.loginfo('Saving data...')
 
                 with self.buffer_lock:
-                    self.pickle_data['data'].append(self.rl_state)
+                    self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
 
                 self.internal_ctr = -1
                 self.marker+=1
@@ -427,36 +427,6 @@ class VisuoMotorNode(object):
                     theta_r_pan, theta_r_tilt = self.calibration.compute_right_eye_cmd(dx_r, dy_r) 
                     theta_tilt = self.calibration.compute_tilt_cmd(theta_l_tilt, theta_r_tilt, alpha_tilt=0.5)
                     self.calibration.store_cmd(theta_l_pan, theta_r_pan, theta_tilt)
-
-
-                    rl_state = {  # RL environment on the network takes care of the other side
-                        'theta_left_pan': None,
-                        'theta_right_pan': None,
-                        'theta_tilt': None,
-                        'chest_cam_px_x': None,
-                        'chest_cam_px_y': None,  
-                        'left_eye_px_x': None,
-                        'left_eye_px_y': None,
-                        'right_eye_px_x': None,
-                        'right_eye_px_y': None,
-                        'dx_l': None,
-                        'dy_l': None,
-                        'dx_r': None,
-                        'dy_r': None,
-                        '3d_point': None,
-                        'chest_angle': None,
-                        'plan_phi_left_pan': None,
-                        'plan_phi_right_pan': None,
-                        'plan_phi_tilt': None,
-                        'chest_img': None,
-                        'left_eye_img': None,
-                        'right_eye_img': None,
-                        'depth_img': None,
-                        'chest_img_stamp': None,
-                        'left_eye_img_stamp': None,
-                        'right_eye_img_stamp': None,
-                        'depth_img_stamp': None,
-                    }
 
                     self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
                     self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
