@@ -6,7 +6,7 @@ def key_check_node():
     rospy.init_node('key_check_node')
     pub = rospy.Publisher('key_press', String, queue_size=10)
 
-    rate = rospy.Rate(10)  # Adjust the rate according to your needs
+    rate = rospy.Rate(5)  # Adjust the rate according to your needs
 
     while not rospy.is_shutdown():
         if keyboard.is_pressed('`'):  # Replace 'key' with the desired key

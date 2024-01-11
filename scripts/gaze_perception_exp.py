@@ -179,7 +179,7 @@ class VisuoMotorNode(object):
                 self.marker+=1
                 if self.marker != 5:
                     print('> Move to next marker')
-                    self.pause = False
+                    # self.pause = False
             
             if self.marker == 5:
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
