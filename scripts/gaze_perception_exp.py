@@ -204,7 +204,7 @@ class VisuoMotorNode(object):
                 df = pd.DataFrame(self.state_list)
 
                 # Save DataFrame as CSV
-                csv_path = pickle_path = os.path.join(results_dir, title_str+'_csv'+dt_str+'.csv')
+                csv_path = os.path.join(results_dir, title_str+'_csv'+dt_str+'.csv')
                 df.to_csv(csv_path, index=False)
                 print('CSV file saved:',csv_path)
 
