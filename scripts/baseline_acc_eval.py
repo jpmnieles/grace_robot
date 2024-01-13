@@ -37,6 +37,7 @@ from grace.attention import *
 class VisuoMotorNode(object):
 
     rl_state = {  # RL environment on the network takes care of the other side
+        'chess_idx': None,
         'theta_left_pan': None,
         'theta_right_pan': None,
         'theta_tilt': None,
@@ -66,6 +67,7 @@ class VisuoMotorNode(object):
     }
 
     state_list = {
+        'chess_idx': [],
         'theta_left_pan': [],
         'theta_right_pan': [],
         'theta_tilt': [],
@@ -234,6 +236,9 @@ class VisuoMotorNode(object):
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
+            depth_map_normalized = self.depth_img / self.depth_img.max()  # Normalize values to [0, 1]
+            gray_depth_img = (depth_map_normalized * 255).astype(np.uint8)
+            gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
 
@@ -252,7 +257,6 @@ class VisuoMotorNode(object):
             #         self.ctr = -1
             #     else:
             #         self.chess_idx += 1
-            # self.ctr+=1
             
             # Process Left Eye, Right Eye, Chest Cam Target
             left_eye_pxs = self.attention.process_img(self.chess_idx, self.left_img)
@@ -357,6 +361,7 @@ class VisuoMotorNode(object):
                 with self.motor_lock:
                     self.calibration.store_latest_state(self._motor_states)
 
+                    self.rl_state['chess_idx'] = copy.deepcopy(self.chess_idx)
                     self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
                     self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
                     self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
@@ -392,6 +397,7 @@ class VisuoMotorNode(object):
                     self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
 
                     # CSV Save
+                    self.state_list['chess_idx'].append(copy.deepcopy(self.chess_idx))
                     self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
                     self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
                     self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
@@ -436,7 +442,7 @@ class VisuoMotorNode(object):
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img))
+            concat_img = np.hstack((chest_img, left_img, right_img, gray_depth_img))
             
             # Resizing
             height, width = concat_img.shape[:2]
@@ -540,5 +546,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(num_ctr=100)
+    vismotor = VisuoMotorNode(num_ctr=5400+2)
     rospy.spin()
