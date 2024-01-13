@@ -303,6 +303,12 @@ class VisuoMotorNode(object):
                         markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            
+            # Dx and Dy for Left and Right
+            dx_l = left_eye_px_tminus1[0] - self.calib_params['left_eye']['x_center']
+            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px_tminus1[1]
+            dx_r = right_eye_px_tminus1[0] - self.calib_params['right_eye']['x_center']
+            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px_tminus1[1]
 
             # Storing
             with self.buffer_lock:
