@@ -41,6 +41,12 @@ class VisuoMotorNode(object):
         'theta_left_pan': None,
         'theta_right_pan': None,
         'theta_tilt': None,
+        'chest_cam_px_x_tminus1': None,
+        'chest_cam_px_y_tminus1': None,  
+        'left_eye_px_x_tminus1': None,
+        'left_eye_px_y_tminus1': None,
+        'right_eye_px_x_tminus1': None,
+        'right_eye_px_y_tminus1': None,
         'chest_cam_px_x': None,
         'chest_cam_px_y': None,  
         'left_eye_px_x': None,
@@ -71,6 +77,12 @@ class VisuoMotorNode(object):
         'theta_left_pan': [],
         'theta_right_pan': [],
         'theta_tilt': [],
+        'chest_cam_px_x_tminus1': [],
+        'chest_cam_px_y_tminus1': [], 
+        'left_eye_px_x_tminus1': [],
+        'left_eye_px_y_tminus1': [],
+        'right_eye_px_x_tminus1': [],
+        'right_eye_px_y_tminus1': [],
         'chest_cam_px_x': [],
         'chest_cam_px_y': [],  
         'left_eye_px_x': [],
@@ -365,6 +377,12 @@ class VisuoMotorNode(object):
                     self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
                     self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
                     self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
+                    self.rl_state['chest_cam_px_x_tminus1'] = chest_cam_px_tminus1[0]
+                    self.rl_state['chest_cam_px_y_tminus1'] = chest_cam_px_tminus1[1]
+                    self.rl_state['left_eye_px_x_tminus1'] = left_eye_px_tminus1[0]
+                    self.rl_state['left_eye_px_y_tminus1'] = left_eye_px_tminus1[1]
+                    self.rl_state['right_eye_px_x_tminus1'] = right_eye_px_tminus1[0]
+                    self.rl_state['right_eye_px_y_tminus1'] = right_eye_px_tminus1[1]
                     self.rl_state['chest_cam_px_x'] = chest_cam_px[0]
                     self.rl_state['chest_cam_px_y'] = chest_cam_px[1]
                     self.rl_state['left_eye_px_x'] = left_eye_px[0]
@@ -374,7 +392,7 @@ class VisuoMotorNode(object):
                     self.rl_state['dx_l'] = dx_l
                     self.rl_state['dy_l'] = dy_l
                     self.rl_state['dx_r'] = dx_r
-                    self.rl_state['dy_r'] = dy_r 
+                    self.rl_state['dy_r'] = dy_r    
 
                     self.rl_state['3d_point'] = (target_x, target_y, target_z)
                     self.rl_state['chest_angle'] =  math.atan2(target_y, target_x)
@@ -401,6 +419,12 @@ class VisuoMotorNode(object):
                     self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
                     self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
                     self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
+                    self.state_list['chest_cam_px_x_tminus1'].append(chest_cam_px_tminus1[0])
+                    self.state_list['chest_cam_px_y_tminus1'].append(chest_cam_px_tminus1[1])
+                    self.state_list['left_eye_px_x_tminus1'].append(left_eye_px_tminus1[0])
+                    self.state_list['left_eye_px_y_tminus1'].append(left_eye_px_tminus1[1])
+                    self.state_list['right_eye_px_x_tminus1'].append(right_eye_px_tminus1[0])
+                    self.state_list['right_eye_px_y_tminus1'].append(right_eye_px_tminus1[1])
                     self.state_list['chest_cam_px_x'].append(chest_cam_px[0])
                     self.state_list['chest_cam_px_y'].append(chest_cam_px[1])
                     self.state_list['left_eye_px_x'].append(left_eye_px[0])
