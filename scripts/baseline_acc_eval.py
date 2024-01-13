@@ -6,6 +6,7 @@ import math
 import time
 import yaml
 import pandas as pd
+import pickle
 from datetime import datetime
 
 import rospy
@@ -39,15 +40,29 @@ class VisuoMotorNode(object):
         'theta_left_pan': None,
         'theta_right_pan': None,
         'theta_tilt': None,
-        'chest_cam_px': None, 
-        'left_eye_px': None,
-        'right_eye_px': None,
+        'chest_cam_px_x': None,
+        'chest_cam_px_y': None,  
+        'left_eye_px_x': None,
+        'left_eye_px_y': None,
+        'right_eye_px_x': None,
+        'right_eye_px_y': None,
+        'dx_l': None,
+        'dy_l': None,
+        'dx_r': None,
+        'dy_r': None,
+        '3d_point': None,
+        'chest_angle': None,
         'plan_phi_left_pan': None,
         'plan_phi_right_pan': None,
         'plan_phi_tilt': None,
+        'chest_img': None,
+        'left_eye_img': None,
+        'right_eye_img': None,
+        'depth_img': None,
         'chest_img_stamp': None,
         'left_eye_img_stamp': None,
         'right_eye_img_stamp': None,
+        'depth_img_stamp': None,
     }
 
     state_list = {
@@ -60,22 +75,36 @@ class VisuoMotorNode(object):
         'left_eye_px_y': [],
         'right_eye_px_x': [],
         'right_eye_px_y': [],
+        'dx_l': [],
+        'dy_l': [],
+        'dx_r': [],
+        'dy_r': [],
+        '3d_point': [],
+        'chest_angle': [],
         'plan_phi_left_pan': [],
         'plan_phi_right_pan': [],
         'plan_phi_tilt': [],
         'chest_img_stamp': [],
         'left_eye_img_stamp': [],
         'right_eye_img_stamp': [],
+        'depth_img_stamp': [],
     }
 
     joints_list = ['neck_roll', 'neck_pitch', 'neck_yaw',
                    'head_roll', 'head_pitch', 
                    'eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
-
+    
+    pickle_data = {
+        'subject_num': None,
+        'markers': [-20, -10, 0, 10, 20],
+        'trial_num': None,
+        'data': [],
+    }
+    marker_list = [-20, -10, 0, 10, 20]
 
     def __init__(self, num_ctr, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+        self.start = time.time()
         self.num_ctr = num_ctr
-
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
         self.action_lock = threading.Lock()
@@ -156,7 +185,7 @@ class VisuoMotorNode(object):
         fy = self.camera_mtx['chest_cam']['fy']
         cy = self.camera_mtx['chest_cam']['cy']
         cx = 434
-        cy = 240
+        cy = 218
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
@@ -191,7 +220,6 @@ class VisuoMotorNode(object):
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
         if elapsed_time > 285e-3:
-            start = time.time()
             print('--------------')
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
@@ -240,7 +268,6 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_px
                 chest_cam_px_tminus1 = chest_cam_px
             elif left_eye_pxs is None or right_eye_pxs is None:
-                dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
                 left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
                 right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
                 chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
@@ -271,8 +298,8 @@ class VisuoMotorNode(object):
             point_msg.point.x = target_x
             point_msg.point.y = target_y
             point_msg.point.z = target_z
-            print("Chest_cam_px", chest_cam_px)
-            print("Point", target_x, target_y, target_z)
+            # print("Chest_cam_px", chest_cam_px)
+            # print("Point", target_x, target_y, target_z)
             # Publish
             self.point_pub.publish(point_msg)
 
@@ -286,9 +313,9 @@ class VisuoMotorNode(object):
             eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
             left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
             right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
-            rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
-            rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
-            rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
+            # rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
+            # rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
+            # rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
             
             # Publish Joint States
             if target_x != 0.3:
@@ -317,6 +344,12 @@ class VisuoMotorNode(object):
                         markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
+            
+            # Dx and Dy for Left and Right
+            dx_l = left_eye_px_tminus1[0] - self.calib_params['left_eye']['x_center']
+            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px_tminus1[1]
+            dx_r = right_eye_px_tminus1[0] - self.calib_params['right_eye']['x_center']
+            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px_tminus1[1]
 
             # Storing
             with self.buffer_lock:
@@ -324,40 +357,70 @@ class VisuoMotorNode(object):
                 with self.motor_lock:
                     self.calibration.store_latest_state(self._motor_states)
 
-                    self.rl_state['chest_cam_px'] = chest_cam_px
-                    self.rl_state['left_eye_px'] = left_eye_px
-                    self.rl_state['right_eye_px'] = right_eye_px
                     self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
                     self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
                     self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
+                    self.rl_state['chest_cam_px_x'] = chest_cam_px[0]
+                    self.rl_state['chest_cam_px_y'] = chest_cam_px[1]
+                    self.rl_state['left_eye_px_x'] = left_eye_px[0]
+                    self.rl_state['left_eye_px_y'] = left_eye_px[1]
+                    self.rl_state['right_eye_px_x'] = right_eye_px[0]
+                    self.rl_state['right_eye_px_y'] = right_eye_px[1]
+                    self.rl_state['dx_l'] = dx_l
+                    self.rl_state['dy_l'] = dy_l
+                    self.rl_state['dx_r'] = dx_r
+                    self.rl_state['dy_r'] = dy_r 
+
+                    self.rl_state['3d_point'] = (target_x, target_y, target_z)
+                    self.rl_state['chest_angle'] =  math.atan2(target_y, target_x)
+                    
                     self.rl_state['plan_phi_left_pan'] = -left_pan
                     self.rl_state['plan_phi_right_pan'] = -right_pan
                     self.rl_state['plan_phi_tilt'] = eyes_tilt
+
+                    self.rl_state['chest_img'] = self.chest_img
+                    self.rl_state['left_eye_img'] = self.left_img
+                    self.rl_state['right_eye_img'] = self.right_img
+                    self.rl_state['depth_img'] = self.depth_img
+
                     self.rl_state['chest_img_stamp'] = chest_img_msg.header.stamp.to_sec()
                     self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
                     self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
-                    print(self.rl_state)
+                    self.rl_state['depth_img_stamp'] = depth_img_msg.header.stamp.to_sec()
+                    # print(self.rl_state)
 
+                    self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
+
+                    # CSV Save
+                    self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
+                    self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
+                    self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
                     self.state_list['chest_cam_px_x'].append(chest_cam_px[0])
                     self.state_list['chest_cam_px_y'].append(chest_cam_px[1])
                     self.state_list['left_eye_px_x'].append(left_eye_px[0])
                     self.state_list['left_eye_px_y'].append(left_eye_px[1])
                     self.state_list['right_eye_px_x'].append(right_eye_px[0])
                     self.state_list['right_eye_px_y'].append(right_eye_px[1])
-                    self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
-                    self.state_list['theta_right_pan'].append(self._motor_states[1]['angle'])
-                    self.state_list['theta_tilt'].append(self._motor_states[2]['angle'])
+
+                    self.state_list['dx_l'].append(dx_l)
+                    self.state_list['dy_l'].append(dy_l)
+                    self.state_list['dx_r'].append(dx_r)
+                    self.state_list['dy_r'].append(dy_r)
+
+                    self.state_list['3d_point'].append((target_x, target_y, target_z))
+                    self.state_list['chest_angle'].append(math.atan2(target_y, target_x))
+
                     self.state_list['plan_phi_left_pan'].append(-left_pan)
                     self.state_list['plan_phi_right_pan'].append(-right_pan)
                     self.state_list['plan_phi_tilt'].append(eyes_tilt)
+
                     self.state_list['chest_img_stamp'].append(chest_img_msg.header.stamp.to_sec())
                     self.state_list['left_eye_img_stamp'].append(left_img_msg.header.stamp.to_sec())
                     self.state_list['right_eye_img_stamp'].append(right_img_msg.header.stamp.to_sec())
+                    self.state_list['depth_img_stamp'].append(depth_img_msg.header.stamp.to_sec())
 
             # Movement
             # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
-            end = time.time()
-            print('[ELAPSED_TIME]', (end-start)*1000, 'msecs')
             # Wait for the new command
 
             with self.action_lock:
@@ -388,19 +451,36 @@ class VisuoMotorNode(object):
             # Saving
             self.ctr+=1
             if self.ctr==self.num_ctr:
-                # Create a DataFrame
+                
+                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                results_dir = os.path.join(parent_dir, 'results','baseline_fk_acc')
+                if not os.path.exists(results_dir):
+                    os.makedirs(results_dir)
+                    print(f"Directory created: {results_dir}")
+                else:
+                    print(f"Directory already exists: {results_dir}")
+                
+                dt_str = datetime.now().strftime("_%Y%m%d_%H%M%S_%f")
+                title_str = 'baseline_fk_acc'
+                pickle_path = os.path.join(results_dir, title_str+'_pickle'+dt_str+'.pickle')
+
+                # Saving to Pickle File
+                with open(pickle_path, 'wb') as file:
+                    pickle.dump(self.pickle_data, file)
+                print('=====================')
+                print('Pickle file saved in:', pickle_path)
+
+                # Saving CSV
                 df = pd.DataFrame(self.state_list)
 
                 # Save DataFrame as CSV
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                results_dir = os.path.join(parent_dir, 'results')
-                dt_str = datetime.now().strftime("_%Y%m%d_%H%M%S_%f")
-                title_str = 'acc_baseline'
-                fn_path = os.path.join(results_dir, title_str+dt_str+'.csv')
-                df.to_csv(fn_path, index=False)
-                print('File saved:', fn_path)
-                
-                rospy.signal_shutdown('End of program')
+                csv_path = os.path.join(results_dir, title_str+'_csv'+dt_str+'.csv')
+                df.to_csv(csv_path, index=False)
+                print('CSV file saved:',csv_path)
+
+                end = time.time()
+                print('[ELAPSED_TIME]', (end-self.start), 'secs')
+                rospy.signal_shutdown('End')
                 sys.exit()
 
     def _capture_limits(self, motor):
@@ -449,8 +529,8 @@ class VisuoMotorNode(object):
         
             # Adjusted Center
             img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
-            img = cv2.line(img, (0, 240), (848, 240), (255,0,0))
-            img = cv2.drawMarker(img, (434, 240), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+            img = cv2.line(img, (0, 218), (848, 218), (255,0,0))
+            img = cv2.drawMarker(img, (434, 218), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
@@ -460,5 +540,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(num_ctr=5401)
+    vismotor = VisuoMotorNode(num_ctr=100)
     rospy.spin()
