@@ -248,7 +248,7 @@ class VisuoMotorNode(object):
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
-            depth_map_normalized = self.depth_img / self.depth_img.max()  # Normalize values to [0, 1]
+            depth_map_normalized = copy.deepcopy(self.depth_img) / self.depth_img.max()  # Normalize values to [0, 1]
             gray_depth_img = (depth_map_normalized * 255).astype(np.uint8)
             gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
@@ -287,8 +287,8 @@ class VisuoMotorNode(object):
                 left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
                 right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
                 chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
-                left_eye_px_tminus1 = left_eye_px
-                right_eye_px_tminus1 = right_eye_px
+                left_eye_px_tminus1 = copy.deepcopy(left_eye_px)
+                right_eye_px_tminus1 = copy.deepcopy(right_eye_px)
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
             else:
                 # Preprocessing
@@ -348,15 +348,15 @@ class VisuoMotorNode(object):
                 theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
 
             # Visualize the Previous Target
-            left_img = cv2.drawMarker(self.left_img, (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
+            left_img = cv2.drawMarker(copy.deepcopy(self.left_img), (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
                                 markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
             left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
                                 markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(self.right_img, (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
+            right_img = cv2.drawMarker(copy.deepcopy(self.right_img), (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
                         markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(self.chest_img, (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
+            chest_img = cv2.drawMarker(copy.deepcopy(self.chest_img), (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
                         markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
@@ -395,7 +395,8 @@ class VisuoMotorNode(object):
                     self.rl_state['dy_r'] = dy_r    
 
                     self.rl_state['3d_point'] = (target_x, target_y, target_z)
-                    self.rl_state['chest_angle'] =  math.atan2(target_y, target_x)
+                    self.rl_state['chest_pan_angle'] =  math.atan2(target_y, target_x)
+                    self.rl_state['chest_tilt_angle'] =  math.atan2(target_z, target_x)
                     
                     self.rl_state['plan_phi_left_pan'] = -left_pan
                     self.rl_state['plan_phi_right_pan'] = -right_pan
