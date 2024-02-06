@@ -25,5 +25,5 @@ rosrun image_view image_view image:=/output_display1
 ~~~
 6. Run the gaze script or custom script
 ~~~
-python -m grace.gaze
+python -m grace.tf_gaze
 ~~~
