@@ -477,6 +477,7 @@ class VisuoMotorNode(object):
     
             # Saving
             self.ctr+=1
+            rospy.loginfo("===%i/%i" % (self.ctr, self.num_ctr))
             if self.ctr==self.num_ctr:
                 
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -567,5 +568,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(chess_seq=[0,2,4,6,8,6,4,2],num_trials=5)
+    vismotor = VisuoMotorNode(chess_seq=[0,2,4,6,8,6,4,2],num_trials=101)
     rospy.spin()
