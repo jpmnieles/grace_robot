@@ -58,7 +58,8 @@ class VisuoMotorNode(object):
         'dx_r': None,
         'dy_r': None,
         '3d_point': None,
-        'chest_angle': None,
+        'chest_pan_angle': None,
+        'chest_tilt_angle': None,
         'plan_phi_left_pan': None,
         'plan_phi_right_pan': None,
         'plan_phi_tilt': None,
@@ -94,7 +95,8 @@ class VisuoMotorNode(object):
         'dx_r': [],
         'dy_r': [],
         '3d_point': [],
-        'chest_angle': [],
+        'chest_pan_angle': [],
+        'chest_tilt_angle': [],
         'plan_phi_left_pan': [],
         'plan_phi_right_pan': [],
         'plan_phi_tilt': [],
@@ -193,7 +195,7 @@ class VisuoMotorNode(object):
             # rospy.loginfo('Incomplete')
             pass
 
-    def depth_to_pointcloud(self, px, depth_img, z_replace=1.0):
+    def depth_to_pointcloud(self, px, depth_img, z_replace=1.5):
         fx = self.camera_mtx['chest_cam']['fx']
         cx = self.camera_mtx['chest_cam']['cx']
         fy = self.camera_mtx['chest_cam']['fy']
@@ -439,7 +441,8 @@ class VisuoMotorNode(object):
                     self.state_list['dy_r'].append(dy_r)
 
                     self.state_list['3d_point'].append((target_x, target_y, target_z))
-                    self.state_list['chest_angle'].append(math.atan2(target_y, target_x))
+                    self.state_list['chest_pan_angle'].append(math.atan2(target_y, target_x))
+                    self.state_list['chest_tilt_angle'].append(math.atan2(target_z, target_x))
 
                     self.state_list['plan_phi_left_pan'].append(-left_pan)
                     self.state_list['plan_phi_right_pan'].append(-right_pan)
