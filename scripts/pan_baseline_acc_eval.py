@@ -567,5 +567,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(chess_seq=[0,2,4,6,8,6,4,2,0],num_trials=5)
+    vismotor = VisuoMotorNode(chess_seq=[0,2,4,6,8,6,4,2],num_trials=5)
     rospy.spin()
