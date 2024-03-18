@@ -473,7 +473,7 @@ class VisuoMotorNode(object):
                 theta_l_pan_list = list(range(0,13))
                 theta_r_pan_list = list(range(-12,1))
                 theta_tilt_list = list(range(0,-31,-5))
-                repetition = 2
+                repetition = 10
                 
                 # print('debug:', ((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list)))
                 theta_tilt_ovr = theta_tilt_list[((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list))]
