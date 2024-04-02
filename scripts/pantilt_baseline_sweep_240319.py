@@ -421,8 +421,6 @@ class VisuoMotorNode(object):
                     self.rl_state['depth_img_stamp'] = depth_img_msg.header.stamp.to_sec()
                     # print(self.rl_state)
 
-                    self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
-
                     # CSV Save
                     self.state_list['chess_idx'].append(copy.deepcopy(self.chess_idx))
                     self.state_list['theta_left_pan'].append(self._motor_states[0]['angle'])
@@ -496,6 +494,8 @@ class VisuoMotorNode(object):
                     self.state_list['theta_left_pan_cmd'].append(theta_l_pan)
                     self.state_list['theta_right_pan_cmd'].append(theta_r_pan)
                     self.state_list['theta_tilt_cmd'].append(theta_tilt_ovr)
+
+                    self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
 
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
