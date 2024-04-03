@@ -143,7 +143,6 @@ class VisuoMotorNode(object):
         self.motor_stamp_tminus1 = rospy.Time.now()
         self.chess_idx_tminus1 = 0
 
-        self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_json("config/camera/camera_mtx.json")
         self.camera_mtx_params = load_camera_mtx()
@@ -167,8 +166,8 @@ class VisuoMotorNode(object):
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
-        self.tf_listener = tf.TransformListener()
+        # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
+        # self.tf_listener = tf.TransformListener()
 
         self.chess_idx = 0
         self.ctr = 0
@@ -179,13 +178,6 @@ class VisuoMotorNode(object):
     def set_action(self, action):
         with self.action_lock:
             self.action = action
-
-    def publish_joint_state(self, names, values):
-        joint_state = JointState()
-        joint_state.header.stamp = rospy.Time.now()
-        joint_state.name = names
-        joint_state.position = values
-        self.joint_state_pub.publish(joint_state)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -316,8 +308,6 @@ class VisuoMotorNode(object):
             # Angles Calculation
             left_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_left_eye_ctr)).squeeze()
             right_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_right_eye_ctr)).squeeze()
-            # T_origin_cyclops_ctr = np.mean([T_origin_left_eye_ctr, T_origin_right_eye_ctr], axis=0)
-            # cyclops_eye_pts = self.transform_points(target_pts, T_origin_cyclops_ctr).squeeze()
             left_tilt = math.atan2(left_eye_pts[1], left_eye_pts[2])
             right_tilt = math.atan2(right_eye_pts[1], right_eye_pts[2])
             eyes_tilt = math.degrees((left_tilt + right_tilt)/2)  # OpenCV coordinates: CW is positive
@@ -341,20 +331,7 @@ class VisuoMotorNode(object):
                 theta_r_pan = right_pan/self.calib_params['right_eye']['slope']
                 theta_tilt = eyes_tilt/self.calib_params['tilt_eyes']['slope']
 
-            # Visualize the Previous Target
-            # left_img = cv2.drawMarker(copy.deepcopy(self.left_img), (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
-            #                     markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
-            # left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
-            #                     markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            # right_img = cv2.drawMarker(copy.deepcopy(self.right_img), (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
-            #             markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            # right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
-            #             markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            # chest_img = cv2.drawMarker(copy.deepcopy(self.chest_img), (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
-            #             markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            # chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
-            #             markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            
+            # Visualize the Previous Target          
             left_img = cv2.drawMarker(copy.deepcopy(self.left_img), (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
                                 markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
             right_img = cv2.drawMarker(copy.deepcopy(self.right_img), (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
@@ -396,8 +373,8 @@ class VisuoMotorNode(object):
                     self.rl_state['dy_r'] = dy_r    
 
                     self.rl_state['3d_point'] = (target_x, target_y, target_z)
-                    self.rl_state['chest_pan_angle'] =  math.atan2(target_y, target_x)
-                    self.rl_state['chest_tilt_angle'] =  math.atan2(target_z, target_x)
+                    self.rl_state['chest_pan_angle'] =  math.atan2(target_x, target_z)
+                    self.rl_state['chest_tilt_angle'] =  math.atan2(target_y, target_z)
                     
                     self.rl_state['plan_phi_left_pan'] = left_pan
                     self.rl_state['plan_phi_right_pan'] = right_pan
@@ -438,8 +415,8 @@ class VisuoMotorNode(object):
                     self.state_list['dy_r'].append(dy_r)
 
                     self.state_list['3d_point'].append((target_x, target_y, target_z))
-                    self.state_list['chest_pan_angle'].append(math.atan2(target_y, target_x))
-                    self.state_list['chest_tilt_angle'].append(math.atan2(target_z, target_x))
+                    self.state_list['chest_pan_angle'].append(math.atan2(target_x, target_z))
+                    self.state_list['chest_tilt_angle'].append(math.atan2(target_y, target_z))
 
                     self.state_list['plan_phi_left_pan'].append(left_pan)
                     self.state_list['plan_phi_right_pan'].append(right_pan)
