@@ -24,7 +24,6 @@ import cv2
 import dlib
 import numpy as np
 import random
-import datetime
 import threading
 import copy
 
@@ -36,18 +35,43 @@ from grace.attention import *
 class VisuoMotorNode(object):
 
     rl_state = {  # RL environment on the network takes care of the other side
+        'chess_idx': None,
         'theta_left_pan': None,
         'theta_right_pan': None,
         'theta_tilt': None,
-        'chest_cam_px': None, 
-        'left_eye_px': None,
-        'right_eye_px': None,
+        'chest_cam_px_x_tminus1': None,
+        'chest_cam_px_y_tminus1': None,  
+        'left_eye_px_x_tminus1': None,
+        'left_eye_px_y_tminus1': None,
+        'right_eye_px_x_tminus1': None,
+        'right_eye_px_y_tminus1': None,
+        'chest_cam_px_x': None,
+        'chest_cam_px_y': None,  
+        'left_eye_px_x': None,
+        'left_eye_px_y': None,
+        'right_eye_px_x': None,
+        'right_eye_px_y': None,
+        'dx_l': None,
+        'dy_l': None,
+        'dx_r': None,
+        'dy_r': None,
+        '3d_point': None,
+        'chest_pan_angle': None,
+        'chest_tilt_angle': None,
         'plan_phi_left_pan': None,
         'plan_phi_right_pan': None,
         'plan_phi_tilt': None,
+        'chest_img': None,
+        'left_eye_img': None,
+        'right_eye_img': None,
+        'depth_img': None,
         'chest_img_stamp': None,
         'left_eye_img_stamp': None,
         'right_eye_img_stamp': None,
+        'depth_img_stamp': None,
+        'theta_left_pan_cmd': None,
+        'theta_right_pan_cmd': None,
+        'theta_tilt_cmd': None,
     }
 
     joints_list = ['neck_roll', 'neck_pitch', 'neck_yaw',
@@ -59,7 +83,6 @@ class VisuoMotorNode(object):
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
         self.action_lock = threading.Lock()
-        self.chess_idx_lock = threading.Lock()
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
@@ -71,11 +94,17 @@ class VisuoMotorNode(object):
         self.motor_stamp_tminus1 = rospy.Time.now()
         self.chess_idx_tminus1 = 0
 
-        self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
-        self.camera_mtx = load_camera_mtx()
+        self.camera_mtx = load_json("config/camera/camera_mtx.json")
+        self.camera_mtx_params = load_camera_mtx()
         self.bridge = CvBridge()
         time.sleep(1)
+        
+        # Initial Reset Action
+        self.move((-18, 18, 22))
+        time.sleep(0.5)
+        self.move((0, 0, 0))
+        time.sleep(1.0)
 
         self.action = None
 
@@ -88,8 +117,8 @@ class VisuoMotorNode(object):
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
-        self.tf_listener = tf.TransformListener()
+        # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
+        # self.tf_listener = tf.TransformListener()
 
         self.chess_idx = 0
         self.ctr = 0
@@ -102,20 +131,9 @@ class VisuoMotorNode(object):
 
         rospy.loginfo('Running')
 
-    def set_chess_idx(self, chess_idx):
-        with self.chess_idx_lock:
-            self.chess_idx = chess_idx
-
     def set_action(self, action):
         with self.action_lock:
             self.action = action
-
-    def publish_joint_state(self, names, values):
-        joint_state = JointState()
-        joint_state.header.stamp = rospy.Time.now()
-        joint_state.name = names
-        joint_state.position = values
-        self.joint_state_pub.publish(joint_state)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -140,13 +158,12 @@ class VisuoMotorNode(object):
             # rospy.loginfo('Incomplete')
             pass
 
-    def depth_to_pointcloud(self, px, depth_img, z_replace=1.5):
-        fx = self.camera_mtx['chest_cam']['fx']
-        cx = self.camera_mtx['chest_cam']['cx']
-        fy = self.camera_mtx['chest_cam']['fy']
-        cy = self.camera_mtx['chest_cam']['cy']
-        cx = 434
-        cy = 240
+        
+    def depth_to_pointcloud(self, px, depth_img, camera_mtx, z_replace=1.0):  
+        fx = camera_mtx[0][0]
+        cx = camera_mtx[0][2]
+        fy = camera_mtx[1][1]
+        cy = camera_mtx[1][2]
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
@@ -154,21 +171,17 @@ class VisuoMotorNode(object):
             z = z_replace
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
-        
-        # Intel Realsense Camera Link
-        pts = [x,y,z]
-        (new_x,new_y,new_z) = self.transform_point('camera_link', 'camera_aligned_depth_to_color_frame', pts)
-        return (new_x,new_y,new_z)
-    
-    def transform_point(self, source_frame, target_frame, pts:list):
-        (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
-        transformation_matrix = translation_matrix(trans)
-        rotation_matrix = quaternion_matrix(rot)
-        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-        new_x = transformed_point[0, 3]
-        new_y = transformed_point[1, 3]
-        new_z = transformed_point[2, 3]
-        return (new_x, new_y, new_z)
+        return x,y,z
+
+    def transform_points(self, pts, T_mtx):
+        new_obj_pts = []
+        for pt in pts:
+            temp_pt = np.append(pt, 1).reshape(-1,1)
+            temp_pt2 = (T_mtx @ temp_pt).squeeze()
+            new_obj_pts.append(temp_pt2[:3])
+        new_obj_pts = np.array(new_obj_pts)
+        return new_obj_pts
+
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
@@ -190,6 +203,9 @@ class VisuoMotorNode(object):
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
             self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
             self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
+            depth_map_normalized = copy.deepcopy(self.depth_img) / self.depth_img.max()  # Normalize values to [0, 1]
+            gray_depth_img = (depth_map_normalized * 255).astype(np.uint8)
+            gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
 
@@ -244,80 +260,48 @@ class VisuoMotorNode(object):
                 right_img = self.right_img
 
             ## Geometric Intersection
-            # Point Stamp
-            point_msg = PointStamped()
-            point_msg.header.stamp = rospy.Time.now()
-            point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.5)
+            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
+            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_depth"])).squeeze()
+            T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
+                                 @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
+                                 @ np.array(self.calib_params['transformations']["T_gaze_ctr_left_eye"]))
+            T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
+                                  @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
+                                  @ np.array(self.calib_params['transformations']["T_gaze_ctr_right_eye"]))
             
-            # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            target_x = max(0.3, z)
-            target_y = -x
-            target_z = -y
-            point_msg.point.x = target_x
-            point_msg.point.y = target_y
-            point_msg.point.z = target_z
-            # print("Chest_cam_px", chest_cam_px)
-            print("Point", target_x, target_y, target_z)
-            # Publish
-            self.point_pub.publish(point_msg)
+            # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
+            target_x = pts[0]
+            target_y = pts[1]
+            target_z = max(0.3, pts[2])
+            target_pts = np.array([[target_x, target_y, target_z]])
 
             # Angles Calculation
-            left_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='lefteye',
-                                                pts=[target_x, target_y, target_z])
-            right_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='righteye',
-                                                pts=[target_x, target_y, target_z])
-            cyclops_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='eyes',
-                                                pts=[target_x, target_y, target_z])
-            eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
-            left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
-            right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
-            # rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
-            # rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
-            # rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
+            left_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_left_eye_ctr)).squeeze()
+            right_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_right_eye_ctr)).squeeze()
+            left_tilt = -math.atan2(left_eye_pts[1], left_eye_pts[2])
+            right_tilt = -math.atan2(right_eye_pts[1], right_eye_pts[2])
+            eyes_tilt = math.degrees((left_tilt + right_tilt)/2)  # OpenCV coordinates: CW is positive
+            left_pan = math.degrees(math.atan2(left_eye_pts[0], left_eye_pts[2]))
+            right_pan = math.degrees(math.atan2(right_eye_pts[0], right_eye_pts[2]))
             
             # Publish Joint States
-            if target_x != 0.3:
-                joints = ['eyes_pitch']
-                positions = [eyes_tilt]
-                self.publish_joint_state(joints, positions)
-                joints = ['lefteye_yaw', 'righteye_yaw']
-                positions = [left_pan, right_pan]
-                self.publish_joint_state(joints, positions)
-
-                
+            if target_z != 0.3:                
                 # Output of the Geometric Intersection
-                theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
-                theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
-                theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
+                theta_l_pan = left_pan/self.calib_params['left_eye']['slope']
+                theta_r_pan = right_pan/self.calib_params['right_eye']['slope']
+                theta_tilt = eyes_tilt/self.calib_params['tilt_eyes']['slope']
 
-            # Storing
-            with self.buffer_lock:
-                # Get Motor State
-                with self.motor_lock:
-                    self.calibration.store_latest_state(self._motor_states)
-
-                    self.rl_state['chest_cam_px'] = chest_cam_px
-                    self.rl_state['left_eye_px'] = left_eye_px
-                    self.rl_state['right_eye_px'] = right_eye_px
-                    self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
-                    self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
-                    self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
-                    self.rl_state['plan_phi_left_pan'] = -left_pan
-                    self.rl_state['plan_phi_right_pan'] = -right_pan
-                    self.rl_state['plan_phi_tilt'] = eyes_tilt
-                    self.rl_state['chest_img_stamp'] = chest_img_msg.header.stamp.to_sec()
-                    self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
-                    self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
-                    print(self.rl_state)
-
-            # Movement
-            # theta_l_pan, theta_r_pan, theta_tilt = None, None, None
-            end = time.time()
-            print('[ELAPSED_TIME]', (end-start)*1000, 'msecs')
+            with self.action_lock:
+                if self.action != None:
+                    theta_l_pan = self.action[0]
+                    theta_r_pan = self.action[1]
+                    theta_tilt = self.action[2]
 
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
-                self.move((theta_l_pan, theta_r_pan, theta_tilt))
+                print('theta_l_pan:', theta_l_pan)
+                print('theta_r_pan:', theta_r_pan)
+                print('theta_tilt:', theta_tilt)
+                self.move([theta_l_pan, theta_r_pan, theta_tilt])
 
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
@@ -370,14 +354,21 @@ class VisuoMotorNode(object):
         args = {"names":self.names, "values":values}
         self.motor_pub.publish(TargetPosture(**args))
 
+    def move_specific(self, names, values):
+        values = [self._check_limits(names[i],x) for i,x in enumerate(values)]
+        if self.degrees:
+            values = [math.radians(x) for x in values]
+        args = {"names":names, "values":values}
+        self.motor_pub.publish(TargetPosture(**args))
+
     def ctr_cross_img(self, img, eye:str):
         """eye (str): select from ['left_eye', 'right_eye', 'chest_cam']
         """
         if eye == 'chest_cam':
             # True Optical Center
-            img = cv2.line(img, (round(self.camera_mtx[eye]['cx']), 0), (round(self.camera_mtx[eye]['cx']), 480), (0,255,0))
-            img = cv2.line(img, (0, round(self.camera_mtx[eye]['cy'])), (848, round(self.camera_mtx[eye]['cy'])), (0,255,0))
-            img = cv2.drawMarker(img, (round(self.camera_mtx[eye]['cx']), round(self.camera_mtx[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
+            img = cv2.line(img, (round(self.camera_mtx_params[eye]['cx']), 0), (round(self.camera_mtx_params[eye]['cx']), 480), (0,255,0))
+            img = cv2.line(img, (0, round(self.camera_mtx_params[eye]['cy'])), (848, round(self.camera_mtx_params[eye]['cy'])), (0,255,0))
+            img = cv2.drawMarker(img, (round(self.camera_mtx_params[eye]['cx']), round(self.camera_mtx_params[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         
             # Adjusted Center
             img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
