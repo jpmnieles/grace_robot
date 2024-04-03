@@ -230,7 +230,7 @@ class VisuoMotorNode(object):
                               (c_detection.right(), c_detection.bottom()), (0, 0, 255), 2)
                 chest_img = cv2.drawMarker(chest_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
             else:
-                chest_cam_px = (424, 240)
+                chest_cam_px = (240, 200)
                 chest_img = self.chest_img
 
             if len(l_detections) > 0:
