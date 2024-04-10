@@ -145,14 +145,14 @@ class VisuoMotorNode(object):
         self.motor_stamp_tminus1 = rospy.Time.now()
         self.chess_idx_tminus1 = 0
 
-        self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
+        # self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
         self.bridge = CvBridge()
         time.sleep(1)
         
         # Initial Reset Action
-        self.move((-18, 18, 22))
+        self.move((-18, -18, 22))
         time.sleep(0.5)
         self.move((0, 0, 0))
         time.sleep(1.0)
@@ -168,8 +168,8 @@ class VisuoMotorNode(object):
                                                                 self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
         self.ats.registerCallback(self.eye_imgs_callback)
         self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-        self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
-        self.tf_listener = tf.TransformListener()
+        # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
+        # self.tf_listener = tf.TransformListener()
 
         self.chess_idx = 0
         self.ctr = 0
@@ -180,13 +180,6 @@ class VisuoMotorNode(object):
     def set_action(self, action):
         with self.action_lock:
             self.action = action
-
-    def publish_joint_state(self, names, values):
-        joint_state = JointState()
-        joint_state.header.stamp = rospy.Time.now()
-        joint_state.name = names
-        joint_state.position = values
-        self.joint_state_pub.publish(joint_state)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -226,26 +219,26 @@ class VisuoMotorNode(object):
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
         
-        # Intel Realsense Camera Link
-        pts = [x,y,z]
-        (trans,rot) = self.tf_listener.lookupTransform('camera_link', 'camera_aligned_depth_to_color_frame', rospy.Time(0))
-        transformation_matrix = translation_matrix(trans)
-        rotation_matrix = quaternion_matrix(rot)
-        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-        new_x = transformed_point[0, 3]
-        new_y = transformed_point[1, 3]
-        new_z = transformed_point[2, 3]
-        return (new_x,new_y,new_z)
+        # # Intel Realsense Camera Link
+        # pts = [x,y,z]
+        # (trans,rot) = self.tf_listener.lookupTransform('camera_link', 'camera_aligned_depth_to_color_frame', rospy.Time(0))
+        # transformation_matrix = translation_matrix(trans)
+        # rotation_matrix = quaternion_matrix(rot)
+        # transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
+        # new_x = transformed_point[0, 3]
+        # new_y = transformed_point[1, 3]
+        # new_z = transformed_point[2, 3]
+        return (x,y,z)
     
-    def transform_point(self, source_frame, target_frame, pts:list):
-        (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
-        transformation_matrix = translation_matrix(trans)
-        rotation_matrix = quaternion_matrix(rot)
-        transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-        new_x = transformed_point[0, 3]
-        new_y = transformed_point[1, 3]
-        new_z = transformed_point[2, 3]
-        return (new_x, new_y, new_z)
+    # def transform_point(self, source_frame, target_frame, pts:list):
+    #     (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
+    #     transformation_matrix = translation_matrix(trans)
+    #     rotation_matrix = quaternion_matrix(rot)
+    #     transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
+    #     new_x = transformed_point[0, 3]
+    #     new_y = transformed_point[1, 3]
+    #     new_z = transformed_point[2, 3]
+    #     return (new_x, new_y, new_z)
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
@@ -307,54 +300,6 @@ class VisuoMotorNode(object):
                 right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
                 chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
 
-
-            ## Geometric Intersection
-            # Point Stamp
-            point_msg = PointStamped()
-            point_msg.header.stamp = rospy.Time.now()
-            point_msg.header.frame_id = 'realsense_mount'  # Replace with your desired frame ID
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, 1.0)
-            
-            # x (straight away from robot, depth), y (positive left, negative right), z (negative down, position right)
-            target_x = max(0.3, z)
-            target_y = -x
-            target_z = -y
-            point_msg.point.x = target_x
-            point_msg.point.y = target_y
-            point_msg.point.z = target_z
-            # print("Chest_cam_px", chest_cam_px)
-            # print("Point", target_x, target_y, target_z)
-            # Publish
-            self.point_pub.publish(point_msg)
-
-            # Angles Calculation
-            left_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='lefteye',
-                                                pts=[target_x, target_y, target_z])
-            right_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='righteye',
-                                                pts=[target_x, target_y, target_z])
-            cyclops_eye_pts = self.transform_point(source_frame='realsense_mount', target_frame='eyes',
-                                                pts=[target_x, target_y, target_z])
-            eyes_tilt = math.atan2(cyclops_eye_pts[2], cyclops_eye_pts[0])
-            left_pan = math.atan2(left_eye_pts[1], left_eye_pts[0])
-            right_pan = math.atan2(right_eye_pts[1], right_eye_pts[0])
-            # rospy.loginfo(f"left_eye_pan (rad): {left_pan: .{4}f}")
-            # rospy.loginfo(f"right_eye_pan (rad): {right_pan: .{4}f}")
-            # rospy.loginfo(f"eyes_tilt (rad): {eyes_tilt: .{4}f}")
-            
-            # Publish Joint States
-            if target_x != 0.3:
-                joints = ['eyes_pitch']
-                positions = [eyes_tilt]
-                # self.publish_joint_state(joints, positions)
-                joints = ['lefteye_yaw', 'righteye_yaw']
-                positions = [left_pan, right_pan]
-                # self.publish_joint_state(joints, positions)
-                
-                # Output of the Geometric Intersection
-                theta_l_pan = math.degrees(-left_pan)/self.calib_params['left_eye']['slope']
-                theta_r_pan = math.degrees(-right_pan)/self.calib_params['right_eye']['slope']
-                theta_tilt = math.degrees(eyes_tilt)/self.calib_params['tilt_eyes']['slope']
-
             # Visualize the Previous Target
             left_img = cv2.drawMarker(copy.deepcopy(self.left_img), (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
                                 markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
@@ -402,13 +347,13 @@ class VisuoMotorNode(object):
                     self.rl_state['dx_r'] = dx_r
                     self.rl_state['dy_r'] = dy_r    
 
-                    self.rl_state['3d_point'] = (target_x, target_y, target_z)
-                    self.rl_state['chest_pan_angle'] =  math.atan2(target_y, target_x)
-                    self.rl_state['chest_tilt_angle'] =  math.atan2(target_z, target_x)
+                    self.rl_state['3d_point'] = (0, 0, 0)
+                    self.rl_state['chest_pan_angle'] =  0.0
+                    self.rl_state['chest_tilt_angle'] =  0.0
                     
-                    self.rl_state['plan_phi_left_pan'] = -left_pan
-                    self.rl_state['plan_phi_right_pan'] = -right_pan
-                    self.rl_state['plan_phi_tilt'] = eyes_tilt
+                    self.rl_state['plan_phi_left_pan'] = 0.0
+                    self.rl_state['plan_phi_right_pan'] = 0.0
+                    self.rl_state['plan_phi_tilt'] = 0.0
 
                     self.rl_state['chest_img'] = self.chest_img
                     self.rl_state['left_eye_img'] = self.left_img
@@ -444,13 +389,13 @@ class VisuoMotorNode(object):
                     self.state_list['dx_r'].append(dx_r)
                     self.state_list['dy_r'].append(dy_r)
 
-                    self.state_list['3d_point'].append((target_x, target_y, target_z))
-                    self.state_list['chest_pan_angle'].append(math.atan2(target_y, target_x))
-                    self.state_list['chest_tilt_angle'].append(math.atan2(target_z, target_x))
+                    self.state_list['3d_point'].append((0.0, 0.0, 0.0))
+                    self.state_list['chest_pan_angle'].append(0.0)
+                    self.state_list['chest_tilt_angle'].append(0.0)
 
-                    self.state_list['plan_phi_left_pan'].append(-left_pan)
-                    self.state_list['plan_phi_right_pan'].append(-right_pan)
-                    self.state_list['plan_phi_tilt'].append(eyes_tilt)
+                    self.state_list['plan_phi_left_pan'].append(0.0)
+                    self.state_list['plan_phi_right_pan'].append(0.0)
+                    self.state_list['plan_phi_tilt'].append(0.0)
 
                     self.state_list['chest_img_stamp'].append(chest_img_msg.header.stamp.to_sec())
                     self.state_list['left_eye_img_stamp'].append(left_img_msg.header.stamp.to_sec())
@@ -467,35 +412,35 @@ class VisuoMotorNode(object):
                     theta_r_pan = self.action[1]
                     theta_tilt = self.action[2]
 
-            if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
-                theta_l_pan_list = list(range(0,13))
-                theta_r_pan_list = list(range(-12,1))
-                theta_tilt_list = list(range(0,-31,-5))
-                repetition = 10
-                
-                # print('debug:', ((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list)))
-                theta_tilt_ovr = theta_tilt_list[((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list))]
-                
-                if self.ctr % 2 == 1:
-                    theta_l_pan = theta_l_pan_list[(self.ctr//2)%(len(theta_l_pan_list))]
-                    theta_r_pan = theta_r_pan_list[(self.ctr//2)%(len(theta_r_pan_list))]
-                else:
-                    theta_l_pan = -18
-                    theta_r_pan = 18
-                
-                # print('debug:', theta_l_pan)
-                
-                self.move((theta_l_pan, theta_r_pan, theta_tilt_ovr))
-                with self.buffer_lock:
-                    self.rl_state['theta_left_pan_cmd'] = theta_l_pan
-                    self.rl_state['theta_right_pan_cmd'] = theta_r_pan 
-                    self.rl_state['theta_tilt_cmd'] = theta_tilt_ovr
+            theta_l_pan_list = list(range(0,13))
+            theta_r_pan_list = list(range(-12,1))
+            theta_tilt_list = list(range(0,-31,-5))
+            repetition = 10
+            
+            # print('debug:', ((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list)))
+            theta_tilt_ovr = theta_tilt_list[((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list))]
+            
+            if self.ctr % 2 == 1:
+                theta_l_pan = theta_l_pan_list[(self.ctr//2)%(len(theta_l_pan_list))]
+                theta_r_pan = theta_r_pan_list[(self.ctr//2)%(len(theta_r_pan_list))]
+            else:
+                theta_l_pan = -18
+                theta_r_pan = -18
+                theta_tilt_ovr = 22  # Should this be added?
+            
+            print('debug:', theta_l_pan, theta_r_pan, theta_tilt_ovr)
+            
+            self.move((theta_l_pan, theta_r_pan, theta_tilt_ovr))
+            with self.buffer_lock:
+                self.rl_state['theta_left_pan_cmd'] = theta_l_pan
+                self.rl_state['theta_right_pan_cmd'] = theta_r_pan 
+                self.rl_state['theta_tilt_cmd'] = theta_tilt_ovr
 
-                    self.state_list['theta_left_pan_cmd'].append(theta_l_pan)
-                    self.state_list['theta_right_pan_cmd'].append(theta_r_pan)
-                    self.state_list['theta_tilt_cmd'].append(theta_tilt_ovr)
+                self.state_list['theta_left_pan_cmd'].append(theta_l_pan)
+                self.state_list['theta_right_pan_cmd'].append(theta_r_pan)
+                self.state_list['theta_tilt_cmd'].append(theta_tilt_ovr)
 
-                    self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
+                self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
 
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
