@@ -244,7 +244,7 @@ class VisuoMotorNode(object):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
-        if elapsed_time > 500e-3:
+        if elapsed_time > 485e-3:
             print('--------------')
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
@@ -426,7 +426,7 @@ class VisuoMotorNode(object):
             else:
                 theta_l_pan = -18
                 theta_r_pan = -18
-                theta_tilt_ovr = 22  # Should this be added?
+                theta_tilt_ovr = 22
             
             print('debug:', theta_l_pan, theta_r_pan, theta_tilt_ovr)
             
