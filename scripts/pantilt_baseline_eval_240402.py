@@ -150,7 +150,7 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        self.move((-18, 18, 22))
+        self.move((-18, -18, 22))
         time.sleep(0.5)
         self.move((0, 0, 0))
         time.sleep(1.0)
@@ -211,7 +211,8 @@ class VisuoMotorNode(object):
         u = round(px[0])
         v = round(px[1])
         z = depth_img[v,u]/1000.0
-        if z==0:
+        z = z - 0.0042  # Added realsense discrepancy
+        if z<=0:
             z = z_replace
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
@@ -291,13 +292,13 @@ class VisuoMotorNode(object):
 
             ## Geometric Intersection
             x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
-            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_depth"])).squeeze()
+            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
             T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                  @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
-                                 @ np.array(self.calib_params['transformations']["T_gaze_ctr_left_eye"]))
+                                 @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
             T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                   @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
-                                  @ np.array(self.calib_params['transformations']["T_gaze_ctr_right_eye"]))
+                                  @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
             
             # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
             target_x = pts[0]
@@ -445,7 +446,7 @@ class VisuoMotorNode(object):
                     theta_tilt = -theta_tilt
                 else:
                     theta_l_pan = -18
-                    theta_r_pan = 18
+                    theta_r_pan = -18
                     theta_tilt = 22
                 
                 # print('debug:', theta_l_pan)
