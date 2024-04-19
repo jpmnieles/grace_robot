@@ -46,10 +46,10 @@ def load_camera_mtx():
     camera_mtx['right_eye']['fy'] = camera_mtx['right_eye']['camera_matrix'][1][1]
     camera_mtx['right_eye']['cy'] = camera_mtx['right_eye']['camera_matrix'][1][2]
 
-    camera_mtx['chest_cam']['fx'] = camera_mtx['right_eye']['camera_matrix'][0][0]
-    camera_mtx['chest_cam']['cx'] = camera_mtx['right_eye']['camera_matrix'][0][2]
-    camera_mtx['chest_cam']['fy'] = camera_mtx['right_eye']['camera_matrix'][1][1]
-    camera_mtx['chest_cam']['cy'] = camera_mtx['right_eye']['camera_matrix'][1][2]
+    camera_mtx['chest_cam']['fx'] = camera_mtx['chest_cam']['camera_matrix'][0][0]
+    camera_mtx['chest_cam']['cx'] = camera_mtx['chest_cam']['camera_matrix'][0][2]
+    camera_mtx['chest_cam']['fy'] = camera_mtx['chest_cam']['camera_matrix'][1][1]
+    camera_mtx['chest_cam']['cy'] = camera_mtx['chest_cam']['camera_matrix'][1][2]
 
     return camera_mtx
 
