@@ -165,12 +165,12 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        # self.move((-18, 18, 22))
-        # time.sleep(0.5)
-        # self.move((0, 0, 0))
-        # time.sleep(1.0)
-
+        self.head_focus_pub = rospy.Publisher('/hr/animation/set_face_target', Target, queue_size=1)
+        self.gaze_focus_pub = rospy.Publisher('/hr/animation/set_gaze_target', Target, queue_size=1)
+        self.tf_listener = tf.TransformListener(False, rospy.Duration.from_sec(1))
         time.sleep(1.0)
+        self.reset()
+        
 
         self.action = None
 
@@ -186,10 +186,6 @@ class VisuoMotorNode(object):
         # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         # self.tf_listener = tf.TransformListener()
 
-        self.head_focus_pub = rospy.Publisher('/hr/animation/set_face_target', Target, queue_size=1)
-        self.gaze_focus_pub = rospy.Publisher('/hr/animation/set_gaze_target', Target, queue_size=1)
-        self.tf_listener = tf.TransformListener(False, rospy.Duration.from_sec(1))
-
         self.chess_idx = 0
         self.ctr = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
@@ -198,14 +194,10 @@ class VisuoMotorNode(object):
 
 
     def reset(self):
-        u = 350
+        u = 424
         v = 240
-        x = 1.0
-        y = (320-u)/320
-        z = (240-v)/480
-        pos = PosStruct()
-        pos.set_xyz(x,y,z)
-        self.UpdateGaze(pos, rospy.Time.now()-rospy.Time.from_sec(0.06),'realsense')
+        depth = 1.0
+        self.cmd_head(u,v,depth)
 
     def get_blender_pos(self, pos, ts, frame_id):
         if frame_id == 'blender':
@@ -260,15 +252,22 @@ class VisuoMotorNode(object):
     
     def calculate_normalized_px(self,u,v,depth):
         x = depth
-        y = (424-u)/424
-        z = (240-v)/480
+        y = (424-u)/848  # [leftmost=0.5, center=0.0, rightmost=-0.5]
+        z = (240-v)/480  # [uppermost=0.5, center=0.0, downmost=-0.5]
+        print('X,Y,Z:', x,y,z)
+
         pos = PosStruct()
         pos.set_xyz(x,y,z)
         return pos
     
     def cmd_eyes(self, u, v, depth):
         pos =self.calculate_normalized_px(u,v,depth)
-        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.06),'realsense')
+        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
+
+    def cmd_head(self, u, v, depth):
+        pos =self.calculate_normalized_px(u,v,depth)
+        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
+        self.SetHeadFocus(pos, 1, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
 
     def set_action(self, action):
         with self.action_lock:
@@ -393,13 +392,13 @@ class VisuoMotorNode(object):
 
             ## Geometric Intersection
             x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
-            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_depth"])).squeeze()
+            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
             T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                  @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
-                                 @ np.array(self.calib_params['transformations']["T_gaze_ctr_left_eye"]))
+                                 @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
             T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                   @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
-                                  @ np.array(self.calib_params['transformations']["T_gaze_ctr_right_eye"]))
+                                  @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
             
             # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
             target_x = pts[0]
@@ -550,8 +549,8 @@ class VisuoMotorNode(object):
                     theta_l_pan = -18
                     theta_r_pan = 18
                     theta_tilt = 22
-                    u = -100
-                    v = -100
+                    u = -800
+                    v = -800
                     depth = 1.0
                 
                 # print('debug:', theta_l_pan)
@@ -579,7 +578,7 @@ class VisuoMotorNode(object):
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img, gray_depth_img))
+            concat_img = np.hstack((chest_img, left_img, right_img))
             
             # Resizing
             height, width = concat_img.shape[:2]
@@ -674,15 +673,14 @@ class VisuoMotorNode(object):
         """
         if eye == 'chest_cam':
             # True Optical Center
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.camera_mtx_params[eye]['cx']), 0), (round(self.camera_mtx_params[eye]['cx']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.camera_mtx_params[eye]['cy'])), (848, round(self.camera_mtx_params[eye]['cy'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.camera_mtx_params[eye]['cx']), round(self.camera_mtx_params[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
-        
-            # Adjusted Center
-            img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
-            img = cv2.line(img, (0, 240), (848, 240), (255,0,0))
-            img = cv2.drawMarker(img, (434, 240), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
