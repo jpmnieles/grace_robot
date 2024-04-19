@@ -232,7 +232,7 @@ class VisuoMotorNode(object):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
         max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
         elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
-        if elapsed_time > 485e-3:
+        if elapsed_time > 500e-3:
             print('--------------')
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
@@ -469,7 +469,7 @@ class VisuoMotorNode(object):
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img, gray_depth_img))
+            concat_img = np.hstack((chest_img, left_img, right_img))
             
             # Resizing
             height, width = concat_img.shape[:2]
@@ -564,15 +564,14 @@ class VisuoMotorNode(object):
         """
         if eye == 'chest_cam':
             # True Optical Center
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.camera_mtx_params[eye]['cx']), 0), (round(self.camera_mtx_params[eye]['cx']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.camera_mtx_params[eye]['cy'])), (848, round(self.camera_mtx_params[eye]['cy'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.camera_mtx_params[eye]['cx']), round(self.camera_mtx_params[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
-        
-            # Adjusted Center
-            img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
-            img = cv2.line(img, (0, 240), (848, 240), (255,0,0))
-            img = cv2.drawMarker(img, (434, 240), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
