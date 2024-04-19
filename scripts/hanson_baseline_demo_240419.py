@@ -165,12 +165,12 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        # self.move((-18, 18, 22))
-        # time.sleep(0.5)
-        # self.move((0, 0, 0))
-        # time.sleep(1.0)
-
+        self.head_focus_pub = rospy.Publisher('/hr/animation/set_face_target', Target, queue_size=1)
+        self.gaze_focus_pub = rospy.Publisher('/hr/animation/set_gaze_target', Target, queue_size=1)
+        self.tf_listener = tf.TransformListener(False, rospy.Duration.from_sec(1))
         time.sleep(1.0)
+        self.reset()
+        
 
         self.action = None
 
@@ -186,21 +186,17 @@ class VisuoMotorNode(object):
         # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         # self.tf_listener = tf.TransformListener()
 
-        self.head_focus_pub = rospy.Publisher('/hr/animation/set_face_target', Target, queue_size=1)
-        self.gaze_focus_pub = rospy.Publisher('/hr/animation/set_gaze_target', Target, queue_size=1)
-        self.tf_listener = tf.TransformListener(False, rospy.Duration.from_sec(1))
-
         self.chess_idx = 0
         self.ctr = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
         self.calib_params = load_json('config/calib/calib_params.json')
-        self.reset()
+
         rospy.loginfo('Running')
 
 
     def reset(self):
-        u = 300
-        v = 400
+        u = 424
+        v = 240
         depth = 1.0
         self.cmd_head(u,v,depth)
 
@@ -257,20 +253,22 @@ class VisuoMotorNode(object):
     
     def calculate_normalized_px(self,u,v,depth):
         x = depth
-        y = (424-u)/848
-        z = (240-v)/480
+        y = (424-u)/848  # [leftmost=0.5, center=0.0, rightmost=-0.5]
+        z = (240-v)/480  # [uppermost=0.5, center=0.0, downmost=-0.5]
+        print('X,Y,Z:', x,y,z)
+
         pos = PosStruct()
         pos.set_xyz(x,y,z)
         return pos
     
     def cmd_eyes(self, u, v, depth):
         pos =self.calculate_normalized_px(u,v,depth)
-        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.06),'realsense')
+        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
 
     def cmd_head(self, u, v, depth):
         pos =self.calculate_normalized_px(u,v,depth)
-        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.06),'realsense')
-        self.SetHeadFocus(pos, 1, rospy.Time.now()-rospy.Time.from_sec(0.06),'realsense')
+        self.SetGazeFocus(pos, 5.0, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
+        self.SetHeadFocus(pos, 1, rospy.Time.now()-rospy.Time.from_sec(0.08),'realsense')
 
     def set_action(self, action):
         with self.action_lock:
@@ -566,7 +564,7 @@ class VisuoMotorNode(object):
                 # self.move([theta_l_pan, theta_r_pan, theta_tilt])
 
                 
-                self.cmd_head(u,v,depth)
+                self.cmd_eyes(u,v,depth)
 
 
                 with self.buffer_lock:
