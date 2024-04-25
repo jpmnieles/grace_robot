@@ -279,7 +279,8 @@ class VisuoMotorNode(object):
             left_img = self.ctr_cross_img(left_img, 'left_eye')
             right_img = self.ctr_cross_img(right_img, 'right_eye')
             chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img))
+            # concat_img = np.hstack((chest_img, left_img, right_img))
+            concat_img = chest_img  # Need to run together with display_left_eye_cam and display_right_eye_cam python scripts
             
             # Resizing
             height, width = concat_img.shape[:2]
