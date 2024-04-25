@@ -101,7 +101,7 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        self.move((-18, 18, 22))
+        self.move((-18, -18, 22))
         time.sleep(0.5)
         self.move((0, 0, 0))
         time.sleep(1.0)
@@ -261,13 +261,13 @@ class VisuoMotorNode(object):
 
             ## Geometric Intersection
             x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
-            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_depth"])).squeeze()
+            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
             T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                  @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
-                                 @ np.array(self.calib_params['transformations']["T_gaze_ctr_left_eye"]))
+                                 @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
             T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
                                   @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
-                                  @ np.array(self.calib_params['transformations']["T_gaze_ctr_right_eye"]))
+                                  @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
             
             # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
             target_x = pts[0]
@@ -366,15 +366,14 @@ class VisuoMotorNode(object):
         """
         if eye == 'chest_cam':
             # True Optical Center
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.camera_mtx_params[eye]['cx']), 0), (round(self.camera_mtx_params[eye]['cx']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.camera_mtx_params[eye]['cy'])), (848, round(self.camera_mtx_params[eye]['cy'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.camera_mtx_params[eye]['cx']), round(self.camera_mtx_params[eye]['cy'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
-        
-            # Adjusted Center
-            img = cv2.line(img, (434, 0), (434, 480), (255,0,0))
-            img = cv2.line(img, (0, 240), (848, 240), (255,0,0))
-            img = cv2.drawMarker(img, (434, 240), color=(255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
         else:
+            img = cv2.putText(img, eye, (5, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                              1, (0,255,0), 2, cv2.LINE_AA)
             img = cv2.line(img, (round(self.calib_params[eye]['x_center']), 0), (round(self.calib_params[eye]['x_center']), 480), (0,255,0))
             img = cv2.line(img, (0, round(self.calib_params[eye]['y_center'])), (640, round(self.calib_params[eye]['y_center'])), (0,255,0))
             img = cv2.drawMarker(img, (round(self.calib_params[eye]['x_center']), round(self.calib_params[eye]['y_center'])), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=15, thickness=2)
