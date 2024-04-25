@@ -79,7 +79,9 @@ class VisuoMotorNode(object):
                    'eyes_pitch', 'lefteye_yaw', 'righteye_yaw']
 
 
-    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"], degrees=True):
+    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown",
+                               "NeckRotation", "UpperGimbalLeft", "UpperGimbalRight",
+                               "LowerGimbalLeft", "LowerGimbalRight"], degrees=True):
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
         self.action_lock = threading.Lock()
@@ -102,10 +104,10 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        self.move((-18, -18, 22))
-        time.sleep(0.5)
-        self.move((0, 0, 0))
-        time.sleep(1.0)
+        self.move((-18, -18, 22, -35, 57, -57, -20, 20))
+        time.sleep(3.0)
+        self.move((0, 0, 0, 0, 0, 0, 0, 0))
+        time.sleep(3.0)
 
         self.action = None
 
@@ -135,27 +137,17 @@ class VisuoMotorNode(object):
     def _capture_state(self, msg):
         """Callback for capturing motor state
         """
-        eye_motors_list = []
+        updated_motors_list = []
         self._msg = msg
-        for idx, x in enumerate(msg.motor_states):
-            if x.name in self.names:
-                eye_motors_list.append(idx)
-        if len(eye_motors_list) == 3:
-            # rospy.loginfo('Complete')
-            # rospy.loginfo(msg.motor_states[eye_motors_list[0]])
-            # rospy.loginfo(msg.motor_states[eye_motors_list[1]])
-            # rospy.loginfo(msg.motor_states[eye_motors_list[2]])
-            with self.motor_lock:
-                for i in range(self.num_names):
-                    motor_msg = msg.motor_states[eye_motors_list[i]]
-                    idx = self.motors.index(motor_msg.name)
-                    self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
-                    self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
-        else:
-            # rospy.loginfo('Incomplete')
-            pass
+        for idx, motor_msg in enumerate(msg.motor_states):
+            if motor_msg.name in self.names:
+                idx = self.motors.index(motor_msg.name)
+                self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
+                self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
+                updated_motors_list.append(motor_msg.name)
+        # Debug
+        # print('===>:', updated_motors_list)
 
-        
     def depth_to_pointcloud(self, px, depth_img, camera_mtx, z_replace=1.0):  
         fx = camera_mtx[0][0]
         cx = camera_mtx[0][2]
@@ -280,7 +272,8 @@ class VisuoMotorNode(object):
                 print('theta_l_pan:', theta_l_pan)
                 print('theta_r_pan:', theta_r_pan)
                 print('theta_tilt:', theta_tilt)
-                self.move([theta_l_pan, theta_r_pan, theta_tilt])
+                self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
+                                   [theta_l_pan, theta_r_pan, theta_tilt])
 
             # Visualization
             left_img = self.ctr_cross_img(left_img, 'left_eye')
