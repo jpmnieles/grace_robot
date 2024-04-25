@@ -133,3 +133,35 @@ class ChArucoAttention(object):
             charuco_corners, charuco_ids = None, None
 
         return charuco_corners, charuco_ids
+
+
+class ArucoAttention(object):
+
+    def __init__(self, points_3d=np.array([[0.065, 0.025, 0.0]])) -> None:
+        self.points_3d = points_3d
+        self.marker_length = 0.05  # 51 mm   
+        self.dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+        self.parameters = aruco.DetectorParameters()
+        self.parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+        self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+    def process_img(self, img, camera_mtx, dist_coef):
+        # Detect markers
+        corners, ids, rejected = aruco.detectMarkers(img, self.dictionary, parameters=self.parameters)
+        
+        if len(corners) > 0:
+            for i in range(0, len(ids)):
+                # Processing
+                rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners[i], 0.05,
+                                                                               camera_mtx, dist_coef)
+                points_2d, _ = cv2.projectPoints(self.points_3d, rvec, tvec, camera_mtx, dist_coef)
+                target_pts = points_2d.squeeze()
+
+                # Plotting
+                img = cv2.drawMarker(img, (round(target_pts[0]), round(target_pts[1])), color=(0, 0, 255), 
+                                     markerType=cv2.MARKER_TILTED_CROSS, markerSize=15, thickness=2)
+                img = cv2.drawFrameAxes(img, camera_mtx, dist_coef, rvec, tvec, 0.05)
+        else:
+             target_pts = None
+
+        return target_pts, img
