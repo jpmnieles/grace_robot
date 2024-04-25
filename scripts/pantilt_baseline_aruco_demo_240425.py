@@ -93,6 +93,7 @@ class VisuoMotorNode(object):
         self.frame_stamp_tminus1 = rospy.Time.now()
         self.motor_stamp_tminus1 = rospy.Time.now()
         self.chess_idx_tminus1 = 0
+        self.prev_chest_cam_px = (240, 200)
 
         self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_json("config/camera/camera_mtx.json")
@@ -217,58 +218,63 @@ class VisuoMotorNode(object):
             chest_cam_px, chest_img = self.attention.process_img(copy.deepcopy(self.chest_img),
                                                                np.array(self.camera_mtx['chest_cam']['camera_matrix']),
                                                                np.array(self.camera_mtx['chest_cam']['distortion_coefficients']))
-
-            print('Target_pts:', chest_cam_px)
             
+            print('Chest Cam Target (px):', chest_cam_px)
+
             # Calculate Delta between Gaze Center and Pixel Target
             if chest_cam_px is None:
                 left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
                 right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
-                chest_cam_px = (240, 200)
-            elif left_eye_px is None or right_eye_px is None:
+                chest_cam_px = self.prev_chest_cam_px
+                theta_l_pan = None
+                theta_r_pan = None
+                theta_tilt = None
+            else:
+                if chest_cam_px[0] >= 848 or chest_cam_px[1] >= 480:
+                    chest_cam_px = (847, 479)
+                    
+                ## Geometric Intersection
+                x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
+                pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
+                T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
+                                    @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
+                                    @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
+                T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
+                                    @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
+                                    @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
+                
+                # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
+                target_x = pts[0]
+                target_y = pts[1]
+                target_z = max(0.3, pts[2])
+                target_pts = np.array([[target_x, target_y, target_z]])
+                print('Target Pts:', target_pts)
+
+                # Angles Calculation
+                left_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_left_eye_ctr)).squeeze()
+                right_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_right_eye_ctr)).squeeze()
+                left_tilt = math.atan2(left_eye_pts[1], left_eye_pts[2])
+                right_tilt = math.atan2(right_eye_pts[1], right_eye_pts[2])
+                eyes_tilt = math.degrees((left_tilt + right_tilt)/2.0)  # OpenCV coordinates: CW is positive
+                left_pan = math.degrees(math.atan2(left_eye_pts[0], left_eye_pts[2]))
+                right_pan = math.degrees(math.atan2(right_eye_pts[0], right_eye_pts[2]))
+        
+                # Publish Joint States
+                if target_z != 0.3:                
+                    # Output of the Geometric Intersection
+                    theta_l_pan = left_pan/self.calib_params['left_eye']['slope']
+                    theta_r_pan = right_pan/self.calib_params['right_eye']['slope']
+                    theta_tilt = -eyes_tilt/self.calib_params['tilt_eyes']['slope']
+
+                with self.action_lock:
+                    if self.action != None:
+                        theta_l_pan = self.action[0]
+                        theta_r_pan = self.action[1]
+                        theta_tilt = self.action[2]
+
+            if left_eye_px is None or right_eye_px is None:
                 left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
                 right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
-            elif chest_cam_px[0] >= 848 or chest_cam_px[1] >= 480:
-                chest_cam_px = (847, 479)
-            
-            ## Geometric Intersection
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
-            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
-            T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
-                                 @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
-                                 @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
-            T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
-                                  @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
-                                  @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
-            
-            # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
-            target_x = pts[0]
-            target_y = pts[1]
-            target_z = max(0.3, pts[2])
-            target_pts = np.array([[target_x, target_y, target_z]])
-            print('Target Pts:', target_pts)
-
-            # Angles Calculation
-            left_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_left_eye_ctr)).squeeze()
-            right_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_right_eye_ctr)).squeeze()
-            left_tilt = math.atan2(left_eye_pts[1], left_eye_pts[2])
-            right_tilt = math.atan2(right_eye_pts[1], right_eye_pts[2])
-            eyes_tilt = math.degrees((left_tilt + right_tilt)/2.0)  # OpenCV coordinates: CW is positive
-            left_pan = math.degrees(math.atan2(left_eye_pts[0], left_eye_pts[2]))
-            right_pan = math.degrees(math.atan2(right_eye_pts[0], right_eye_pts[2]))
-            
-            # Publish Joint States
-            if target_z != 0.3:                
-                # Output of the Geometric Intersection
-                theta_l_pan = left_pan/self.calib_params['left_eye']['slope']
-                theta_r_pan = right_pan/self.calib_params['right_eye']['slope']
-                theta_tilt = -eyes_tilt/self.calib_params['tilt_eyes']['slope']
-
-            with self.action_lock:
-                if self.action != None:
-                    theta_l_pan = self.action[0]
-                    theta_r_pan = self.action[1]
-                    theta_tilt = self.action[2]
 
             if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
                 print('theta_l_pan:', theta_l_pan)
@@ -288,6 +294,9 @@ class VisuoMotorNode(object):
 
             # Output Display 1
             self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
+
+            # Storing Old Variable
+            self.prev_chest_cam_px = copy.deepcopy(chest_cam_px)
 
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
