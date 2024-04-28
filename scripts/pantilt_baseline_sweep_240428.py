@@ -197,7 +197,7 @@ class VisuoMotorNode(object):
         # Debug
         # print('===>:', updated_motors_list)
 
-    def depth_to_pointcloud(self, px, depth_img, z_replace=1.5):
+    def depth_to_pointcloud(self, px, depth_img, z_replace=1.0):
         fx = self.camera_mtx['chest_cam']['fx']
         cx = self.camera_mtx['chest_cam']['cx']
         fy = self.camera_mtx['chest_cam']['fy']
@@ -211,27 +211,7 @@ class VisuoMotorNode(object):
             z = z_replace
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
-        
-        # # Intel Realsense Camera Link
-        # pts = [x,y,z]
-        # (trans,rot) = self.tf_listener.lookupTransform('camera_link', 'camera_aligned_depth_to_color_frame', rospy.Time(0))
-        # transformation_matrix = translation_matrix(trans)
-        # rotation_matrix = quaternion_matrix(rot)
-        # transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-        # new_x = transformed_point[0, 3]
-        # new_y = transformed_point[1, 3]
-        # new_z = transformed_point[2, 3]
         return (x,y,z)
-    
-    # def transform_point(self, source_frame, target_frame, pts:list):
-    #     (trans,rot) = self.tf_listener.lookupTransform(target_frame, source_frame, rospy.Time(0))
-    #     transformation_matrix = translation_matrix(trans)
-    #     rotation_matrix = quaternion_matrix(rot)
-    #     transformed_point = translation_matrix(pts) @ transformation_matrix @ rotation_matrix
-    #     new_x = transformed_point[0, 3]
-    #     new_y = transformed_point[1, 3]
-    #     new_z = transformed_point[2, 3]
-    #     return (new_x, new_y, new_z)
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
