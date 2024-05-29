@@ -127,6 +127,8 @@ class VisuoMotorNode(object):
         # self.point_pub = rospy.Publisher('/point_location', PointStamped, queue_size=1)
         # self.tf_listener = tf.TransformListener()
 
+        self.key_press_sub = rospy.Subscriber('key_press', String, self._key_press_callback)
+
         self.chess_idx = 0
         self.ctr = 0
         self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
@@ -141,6 +143,40 @@ class VisuoMotorNode(object):
     def set_action(self, action):
         with self.action_lock:
             self.action = action
+
+    def _key_press_callback(self, event):
+        if event.data == '`':  # Replace '`' with the desired key  # Lowercase tilde (~)
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            results_dir = os.path.join(parent_dir, 'results','capture_eyes_chest_cam')
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                print(f"Directory created: {results_dir}")
+            else:
+                print(f"Directory already exists: {results_dir}")
+            
+            dt_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            title_str = 'captureeyeschestcam'
+            json_path = os.path.join(results_dir, dt_str+'_'+title_str+'_json'+'.json')
+            chestimg_path = os.path.join(results_dir, dt_str+'_'+title_str+'_chestimg'+'.png')
+            leftimg_path = os.path.join(results_dir, dt_str+'_'+title_str+'_leftimg'+'.png')
+            rightimg_path = os.path.join(results_dir, dt_str+'_'+title_str+'_rightimg'+'.png')
+            
+            # Saving images
+            cv2.imwrite(chestimg_path, self.chest_img)
+            cv2.imwrite(leftimg_path, self.left_img)
+            cv2.imwrite(rightimg_path, self.right_img)
+
+            # Saving to Notepad File
+            json_data = {
+                "chest_cam_px": self.chest_cam_px,
+                "left_eye_px": self.left_eye_px,
+                "right_eye_px": self.right_eye_px,
+            }
+            print(json_data)
+            with open(json_path, 'w') as f:
+                json.dump(json_data, f)
+            print('=====================')
+            print('Json file saved in:', json_path)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -257,6 +293,11 @@ class VisuoMotorNode(object):
             else:
                 right_eye_px = (-4, -4)
                 right_img = self.right_img
+
+            # Saving Pixel Targets
+            self.chest_cam_px = copy.deepcopy(chest_cam_px)
+            self.left_eye_px = copy.deepcopy(left_eye_px)
+            self.right_eye_px = copy.deepcopy(right_eye_px)
 
             ## Geometric Intersection
             x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
