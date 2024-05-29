@@ -222,7 +222,7 @@ motors:
     topic: feetechHead
     transmission: 1
   EyeTurnLeft:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -255,7 +255,7 @@ motors:
     topic: feetechEyes
     transmission: 1
   EyeTurnRight:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -288,7 +288,7 @@ motors:
     topic: feetechEyes
     transmission: 1
   EyesUpDown:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes

@@ -364,7 +364,7 @@ motors:
     topic: feetechTorso
     transmission: 1
   NeckRotation:
-    acceleration: 255
+    acceleration: 0
     assembly: bodyNC
     default: 0
     group: Neck
