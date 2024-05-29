@@ -295,10 +295,10 @@ motors:
     hardware: feetech
     init: 2050
     labelleft: EyesUpDown
-    max: 0.26231071472844464
+    max: 0.38349519697141027
     min: -0.5368932757599744
     motor_id: 16
-    motor_max: 2221
+    motor_max: 2300
     motor_min: 1700
     name: EyesUpDown
     pau:
@@ -396,7 +396,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LipsStretchLeft:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -429,7 +429,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LipsStretchRight:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -462,7 +462,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LowerLidLeft:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -495,7 +495,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LowerLidRight:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -528,7 +528,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LowerLipCenter:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -561,7 +561,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LowerLipLeft:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -594,7 +594,7 @@ motors:
     topic: feetechHead
     transmission: 1
   LowerLipRight:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -684,7 +684,7 @@ motors:
     acceleration: 255
     assembly: grace9
     default: 0
-    group: Eyes
+    group: Lips
     hardware: feetech
     init: 1900
     labelleft: SneerLeft
@@ -711,7 +711,7 @@ motors:
     acceleration: 255
     assembly: grace9
     default: 0
-    group: Eyes
+    group: Lips
     hardware: feetech
     init: 2150
     labelleft: SneerRight
@@ -759,10 +759,10 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 1900
+    init: 2050
     labelleft: UpperGimbalLeft
-    max: 0.9970875121256667
-    min: 0.0
+    max: 0.7669903939428205
+    min: -0.23009711818284617
     motor_id: 41
     motor_max: 2550
     motor_min: 1900
@@ -787,10 +787,10 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2200
+    init: 2050
     labelleft: UpperGimbalRight
-    max: 0.0
-    min: -0.9970875121256667
+    max: 0.23009711818284617
+    min: -0.7669903939428205
     motor_id: 42
     motor_max: 2200
     motor_min: 1550
@@ -810,7 +810,7 @@ motors:
     topic: feetechNeck
     transmission: 1
   UpperLidLeft:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -843,7 +843,7 @@ motors:
     topic: feetechHead
     transmission: 1
   UpperLidRight:
-    acceleration: 255
+    acceleration: 0
     assembly: grace9
     default: 0
     group: Eyes
@@ -876,7 +876,7 @@ motors:
     topic: feetechHead
     transmission: 1
   UpperLipCenter:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -909,7 +909,7 @@ motors:
     topic: feetechHead
     transmission: 1
   UpperLipLeft:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips
@@ -942,7 +942,7 @@ motors:
     topic: feetechHead
     transmission: 1
   UpperLipRight:
-    acceleration: 255
+    acceleration: 200
     assembly: grace9
     default: 0
     group: Lips

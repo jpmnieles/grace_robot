@@ -295,10 +295,10 @@ motors:
     hardware: feetech
     init: 2050
     labelleft: EyesUpDown
-    max: 0.38349519697141027
+    max: 0.26231071472844464
     min: -0.5368932757599744
     motor_id: 16
-    motor_max: 2300
+    motor_max: 2221
     motor_min: 1700
     name: EyesUpDown
     pau:
@@ -759,10 +759,10 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2050
+    init: 1900
     labelleft: UpperGimbalLeft
-    max: 0.7669903939428205
-    min: -0.23009711818284617
+    max: 0.9970875121256667
+    min: 0.0
     motor_id: 41
     motor_max: 2550
     motor_min: 1900
@@ -787,10 +787,10 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2050
+    init: 2200
     labelleft: UpperGimbalRight
-    max: 0.23009711818284617
-    min: -0.7669903939428205
+    max: 0.0
+    min: -0.9970875121256667
     motor_id: 42
     motor_max: 2200
     motor_min: 1550

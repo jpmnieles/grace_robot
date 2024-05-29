@@ -5,10 +5,10 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2150
+    init: 2230
     labelleft: Camera
-    max: 0.8436894333371027
-    min: -0.6902913545485385
+    max: 0.7209709703062513
+    min: -0.8130098175793898
     motor_id: 53
     motor_max: 2700
     motor_min: 1700

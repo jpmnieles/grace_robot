@@ -5,13 +5,13 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2230
+    init: 2050
     labelleft: Camera
-    max: 0.7209709703062513
-    min: -0.8130098175793898
+    max: 0.6902913545485385
+    min: -0.6902913545485385
     motor_id: 53
-    motor_max: 2700
-    motor_min: 1700
+    motor_max: 2500
+    motor_min: 1600
     name: Camera
     protocol: 0
     sort_no: 104
@@ -24,10 +24,10 @@ motors:
     default: 0
     group: LeftArm
     hardware: feetech
-    init: 2040
+    init: 2050
     labelleft: LeftElbowPitch
-    max: 2.2396119503130363
-    min: -2.055534255766759
+    max: 2.2242721424341796
+    min: -2.0708740636456158
     motor_id: 83
     motor_max: 3500
     motor_min: 700
@@ -51,10 +51,10 @@ motors:
     default: 0
     group: LeftArm
     hardware: feetech
-    init: 510
+    init: 500
     labelleft: LeftElbowYaw
-    max: 0.521553467881118
-    min: -0.5522330836388308
+    max: 0.5368932757599744
+    min: -0.5368932757599744
     motor_id: 84
     motor_max: 850
     motor_min: 150
@@ -72,16 +72,92 @@ motors:
     speed: 4000
     topic: feetechLarm
     transmission: 1
+  LeftIndexFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftIndexFinger
+    max: 2.1475731030398975
+    min: -0.30679615757712825
+    motor_id: 89
+    motor_max: 3450
+    motor_min: 1850
+    name: LeftIndexFinger
+    protocol: 0
+    sort_no: -65
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftMiddleFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftMiddleFinger
+    max: 2.3009711818284617
+    min: -0.30679615757712825
+    motor_id: 90
+    motor_max: 3550
+    motor_min: 1850
+    name: LeftMiddleFinger
+    protocol: 0
+    sort_no: -64
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftPinkyFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftPinkyFinger
+    max: 1.303883669702795
+    min: -0.07669903939428206
+    motor_id: 92
+    motor_max: 2900
+    motor_min: 2000
+    name: LeftPinkyFinger
+    protocol: 0
+    sort_no: -62
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftRingFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftRingFinger
+    max: 2.377670221222744
+    min: -0.30679615757712825
+    motor_id: 91
+    motor_max: 3600
+    motor_min: 1850
+    name: LeftRingFinger
+    protocol: 0
+    sort_no: -63
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
   LeftShoulderPitch:
     acceleration: 100
     assembly: bodyNC
     default: 0
     group: LeftArm
     hardware: feetech
-    init: 2040
+    init: 2050
     labelleft: LeftShoulderPitch
-    max: 2.5464081078901644
-    min: -0.5982525072754
+    max: 2.531068300011308
+    min: -0.6135923151542565
     motor_id: 80
     motor_max: 3700
     motor_min: 1650
@@ -132,10 +208,10 @@ motors:
     default: 0
     group: LeftArm
     hardware: feetech
-    init: 2040
+    init: 2050
     labelleft: LeftShoulderYaw
-    max: 1.1658253987930873
-    min: -1.4419419406125027
+    max: 1.1504855909142309
+    min: -1.4572817484913592
     motor_id: 82
     motor_max: 2800
     motor_min: 1100
@@ -153,18 +229,94 @@ motors:
     speed: 4000
     topic: feetechLarm
     transmission: 1
+  LeftThumbFinger:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftThumbFinger
+    max: 1.303883669702795
+    min: -0.7669903939428205
+    motor_id: 88
+    motor_max: 2900
+    motor_min: 1550
+    name: LeftThumbFinger
+    protocol: 0
+    sort_no: -67
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftThumbRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftThumbRoll
+    max: 0.38349519697141027
+    min: -0.5368932757599744
+    motor_id: 87
+    motor_max: 2300
+    motor_min: 1700
+    name: LeftThumbRoll
+    protocol: 0
+    sort_no: -68
+    speed: 0
+    topic: feetechLarm
+    transmission: 1
+  LeftWristPitch:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftWristPitch
+    max: 0.6135923151542565
+    min: -0.6135923151542565
+    motor_id: 85
+    motor_max: 2450
+    motor_min: 1650
+    name: LeftWristPitch
+    protocol: 0
+    sort_no: -70
+    speed: 50
+    topic: feetechLarm
+    transmission: 1
+  LeftWristRoll:
+    acceleration: 255
+    assembly: bodyNC
+    default: 0
+    group: LeftHand
+    hardware: feetech
+    init: 2050
+    labelleft: LeftWristRoll
+    max: 0.6135923151542565
+    min: -0.6135923151542565
+    motor_id: 86
+    motor_max: 2450
+    motor_min: 1650
+    name: LeftWristRoll
+    protocol: 0
+    sort_no: -69
+    speed: 50
+    topic: feetechLarm
+    transmission: 1
   LowerGimbalLeft:
     acceleration: 100
     assembly: bodyNC
     default: 0
     group: Neck
     hardware: feetech
-    init: 2130
+    init: 2050
     labelleft: LowerGimbalLeft
-    max: 1.3345632854605078
-    min: -0.3528155812136975
+    max: 0.5368932757599744
+    min: -0.23009711818284617
     motor_id: 51
-    motor_max: 3000
+    motor_max: 2400
     motor_min: 1900
     name: LowerGimbalLeft
     pau:
@@ -188,13 +340,13 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2070
+    init: 2050
     labelleft: LowerGimbalRight
-    max: 0.3528155812136975
-    min: -1.3345632854605078
+    max: 0.23009711818284617
+    min: -0.5368932757599744
     motor_id: 52
-    motor_max: 2300
-    motor_min: 1200
+    motor_max: 2200
+    motor_min: 1700
     name: LowerGimbalRight
     pau:
       function:
@@ -217,12 +369,12 @@ motors:
     default: 0
     group: Neck
     hardware: feetech
-    init: 2000
+    init: 2050
     labelleft: NeckRotation
-    max: 0.6135923151542565
-    min: -0.6135923151542565
+    max: 0.6902913545485385
+    min: -0.6902913545485385
     motor_id: 50
-    motor_max: 2400
+    motor_max: 2500
     motor_min: 1600
     name: NeckRotation
     pau:
@@ -246,13 +398,13 @@ motors:
     default: 0
     group: RightArm
     hardware: feetech
-    init: 2200
+    init: 2050
     labelleft: RightElbowPitch
     max: 2.0708740636456158
-    min: -2.1475731030398975
+    min: -2.2242721424341796
     motor_id: 63
-    motor_max: 3550
-    motor_min: 800
+    motor_max: 3400
+    motor_min: 600
     name: RightElbowPitch
     pau:
       function:
@@ -273,13 +425,13 @@ motors:
     default: 0
     group: RightArm
     hardware: feetech
-    init: 495
+    init: 500
     labelleft: RightElbowYaw
-    max: 0.7439806821245359
-    min: -0.6826214506091103
+    max: 0.5368932757599744
+    min: -0.5368932757599744
     motor_id: 64
-    motor_max: 980
-    motor_min: 50
+    motor_max: 850
+    motor_min: 150
     name: RightElbowYaw
     pau:
       function:
@@ -327,13 +479,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 2900
+    init: 2050
     labelleft: RightIndexFinger
     max: 0.30679615757712825
-    min: -2.9145634969827183
+    min: -2.1475731030398975
     motor_id: 69
-    motor_max: 3100
-    motor_min: 1000
+    motor_max: 2250
+    motor_min: 650
     name: RightIndexFinger
     pau:
       function:
@@ -354,13 +506,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 1550
+    init: 2050
     labelleft: RightMiddleFinger
-    max: 2.9912625363770005
-    min: -0.6902913545485385
+    max: 2.3009711818284617
+    min: -0.30679615757712825
     motor_id: 70
-    motor_max: 3500
-    motor_min: 1100
+    motor_max: 3550
+    motor_min: 1850
     name: RightMiddleFinger
     pau:
       function:
@@ -381,13 +533,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 2040
+    init: 2050
     labelleft: RightPinkyFinger
-    max: 0.3988350048502667
-    min: -1.748738098189631
+    max: 0.07669903939428206
+    min: -1.303883669702795
     motor_id: 72
-    motor_max: 2300
-    motor_min: 900
+    motor_max: 2100
+    motor_min: 1200
     name: RightPinkyFinger
     pau:
       function:
@@ -408,13 +560,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 1600
+    init: 2050
     labelleft: RightRingFinger
-    max: 3.067961575771282
-    min: -0.46019423636569234
+    max: 2.377670221222744
+    min: -0.30679615757712825
     motor_id: 71
     motor_max: 3600
-    motor_min: 1300
+    motor_min: 1850
     name: RightRingFinger
     pau:
       function:
@@ -435,10 +587,10 @@ motors:
     default: 0
     group: RightArm
     hardware: feetech
-    init: 2040
+    init: 2050
     labelleft: RightShoulderPitch
-    max: 0.6289321230331129
-    min: -2.5157284921324514
+    max: 0.6135923151542565
+    min: -2.531068300011308
     motor_id: 60
     motor_max: 2450
     motor_min: 400
@@ -516,13 +668,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 2450
+    init: 2050
     labelleft: RightThumbFinger
-    max: 0.38349519697141027
-    min: -2.2242721424341796
+    max: 0.7669903939428205
+    min: -1.303883669702795
     motor_id: 68
-    motor_max: 2700
-    motor_min: 1000
+    motor_max: 2550
+    motor_min: 1200
     name: RightThumbFinger
     pau:
       function:
@@ -543,13 +695,13 @@ motors:
     default: 0
     group: RightHand
     hardware: feetech
-    init: 2460
+    init: 2050
     labelleft: RightThumbRoll
-    max: 0.5982525072754
-    min: -0.705631162427395
+    max: 0.38349519697141027
+    min: -0.5368932757599744
     motor_id: 67
-    motor_max: 2850
-    motor_min: 2000
+    motor_max: 2300
+    motor_min: 1700
     name: RightThumbRoll
     pau:
       function:
@@ -570,10 +722,10 @@ motors:
     default: 0
     group: RightArm
     hardware: feetech
-    init: 2042
+    init: 2050
     labelleft: RightWristPitch
-    max: 0.6258641614573416
-    min: -0.6013204688511713
+    max: 0.6135923151542565
+    min: -0.6135923151542565
     motor_id: 65
     motor_max: 2450
     motor_min: 1650
@@ -597,10 +749,10 @@ motors:
     default: 0
     group: RightArm
     hardware: feetech
-    init: 2042
+    init: 2050
     labelleft: RightWristRoll
-    max: 0.6258641614573416
-    min: -0.6013204688511713
+    max: 0.6135923151542565
+    min: -0.6135923151542565
     motor_id: 66
     motor_max: 2450
     motor_min: 1650
