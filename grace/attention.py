@@ -99,41 +99,18 @@ class ChessboardAttention(object):
 class ChArucoAttention(object):
 
     def __init__(self) -> None:
-        self.chess_squares = (9, 6)
-        self.square_length = 0.06  # 60 mm
-        self.marker_length = 0.051  # 51 mm
+        self.chess_squares = (11, 6)
+        self.square_length = 0.194  # 19.4 mm
+        self.marker_length = 0.15  # 15 cm
         
-        self.dictionary = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        self.dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
         self.parameters = aruco.DetectorParameters()
-        self.parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+        self.parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
         self.board = aruco.CharucoBoard(self.chess_squares, self.square_length, self.marker_length, self.dictionary)
         self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    def visualize_chess_idx(self, px, img):
-        x, y = px
-        img = cv2.drawMarker(img, (round(x), round(y)), color=(255, 0, 0), 
-                             markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-        return img
-
-    def process_img(self, chess_idx, img):
-        # Convert image to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # Apply histogram equalization to enhance contrast
-        equalized = cv2.equalizeHist(gray)
-
-        binary = cv2.threshold(img, 120, 255, cv2.THRESH_BINARY) 
-
-        # Detect markers
-        corners, ids, rejected = aruco.detectMarkers(binary, self.dictionary, parameters=self.parameters)
+        self.charuco_detector = aruco.CharucoDetector(self.board)
         
-        if len(corners) > 0:
-            charuco_retval, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(corners, ids, gray, self.board)
-        else:
-            charuco_corners, charuco_ids = None, None
-
-        return charuco_corners, charuco_ids
-
 
 class ArucoAttention(object):
 
