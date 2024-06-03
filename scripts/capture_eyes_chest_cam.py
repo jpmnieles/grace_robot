@@ -243,6 +243,7 @@ class VisuoMotorNode(object):
             gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
+            print('Median depth (m):', np.median(self.depth_img)/1000.0)
 
             ## Attention ##
 
