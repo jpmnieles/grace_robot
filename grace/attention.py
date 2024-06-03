@@ -98,11 +98,10 @@ class ChessboardAttention(object):
 
 class ChArucoAttention(object):
 
-    def __init__(self) -> None:
+    def __init__(self, square_length=0.194, marker_length=0.15) -> None:
         self.chess_squares = (11, 6)
-        self.square_length = 0.194  # 19.4 mm
-        self.marker_length = 0.15  # 15 cm
-        
+        self.square_length = square_length  # [Sweep] 19.4 cm, [Eval] 9.557 cm
+        self.marker_length = marker_length  # [Sweep] 15 cm, [Eval] 7.436 cm        
         self.dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
         self.parameters = aruco.DetectorParameters()
         self.parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
