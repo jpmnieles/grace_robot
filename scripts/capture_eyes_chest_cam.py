@@ -103,7 +103,11 @@ class VisuoMotorNode(object):
         time.sleep(1)
         
         # Initial Reset Action
-        self.move((-18, -18, 22, -35, 0, 0, 0, 0))
+        self.move((0, 0, 0, 0, 44, -44, -13, 13))
+        time.sleep(3.0)
+        self.move((0, 0, 0, 0, 0, 0, 0, 0))
+        time.sleep(3.0)
+        self.move((0, 0, 0, -35, 0, 0, 0, 0))
         time.sleep(3.0)
         self.move((0, 0, 0, 0, 0, 0, 0, 0))
         time.sleep(3.0)
@@ -243,7 +247,8 @@ class VisuoMotorNode(object):
             gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
             # print(left_img_msg.header, right_img_msg.header, chest_img_msg.header)
             # print(self.depth_img)
-            print('Median depth (m):', np.median(self.depth_img)/1000.0)
+            # print('Median depth (m):', np.median(self.depth_img)/1000.0)
+            print('Median depth of ROI(m):', np.median(self.depth_img[69:221,190:664])/1000.0)
 
             ## Attention ##
 
@@ -349,7 +354,8 @@ class VisuoMotorNode(object):
             right_img = self.ctr_cross_img(copy.deepcopy(right_img), 'right_eye')
             chest_img = self.ctr_cross_img(copy.deepcopy(chest_img), 'chest_cam')
             # concat_img = np.hstack((chest_img, left_img, right_img))
-            concat_img = np.hstack((self.chest_img, self.left_img, self.right_img))
+            chest_roi_img = cv2.rectangle(copy.deepcopy(self.chest_img), (190,69), (663,220), (0, 255, 0), 2)
+            concat_img = np.hstack((chest_roi_img, self.left_img, self.right_img))
 
             # Resizing
             height, width = concat_img.shape[:2]
