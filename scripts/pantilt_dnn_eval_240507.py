@@ -511,7 +511,7 @@ class VisuoMotorNode(object):
             if self.ctr==self.num_ctr:
                 
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                results_dir = os.path.join(parent_dir, 'results','pantilt_baseline_eval')
+                results_dir = os.path.join(parent_dir, 'results','pantilt_dnn_eval')
                 if not os.path.exists(results_dir):
                     os.makedirs(results_dir)
                     print(f"Directory created: {results_dir}")
@@ -519,7 +519,7 @@ class VisuoMotorNode(object):
                     print(f"Directory already exists: {results_dir}")
                 
                 dt_str = datetime.now().strftime("_%Y%m%d_%H%M%S_%f")
-                title_str = 'pantilt_baseline_eval'
+                title_str = 'pantilt_dnn_eval'
                 pickle_path = os.path.join(results_dir, title_str+'_pickle'+dt_str+'.pickle')
 
                 # Saving to Pickle File
@@ -604,5 +604,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(num_trials=600)
+    vismotor = VisuoMotorNode(num_trials=500)
     rospy.spin()
