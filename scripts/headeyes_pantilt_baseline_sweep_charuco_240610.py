@@ -391,7 +391,7 @@ class HeadEyesSweepNode(object):
                                                           LEFT_EYE_CAMERA_MTX, 
                                                           LEFT_EYE_DIST_COEF, 
                                                           T_bl)
-                                l_x_c, l_y_c, l_z_c = transform_points(l_X, np.linalg.inv(T_bc)).tolist()
+                                l_x_c, l_y_c, l_z_c = transform_points([l_X], np.linalg.inv(T_bc)).tolist()[0]
                             else:
                                 l_x_c = -100
                                 l_y_c = -100
@@ -402,7 +402,7 @@ class HeadEyesSweepNode(object):
                                                           RIGHT_EYE_CAMERA_MTX, 
                                                           RIGHT_EYE_DIST_COEF, 
                                                           T_br)
-                                r_x_c, r_y_c, r_z_c = transform_points(r_X, np.linalg.inv(T_bc)).tolist()
+                                r_x_c, r_y_c, r_z_c = transform_points([r_X], np.linalg.inv(T_bc)).tolist()[0]
                             else:
                                 r_x_c = -100
                                 r_y_c = -100
