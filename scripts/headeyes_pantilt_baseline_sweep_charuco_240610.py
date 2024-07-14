@@ -355,57 +355,57 @@ class VisuoMotorNode(object):
                         rospy.loginfo('lnt:%d, unt:%d' % (lnt,unt))
                         rospy.sleep(3)
                     
-                        # Neck Rotation
-                        for lnp in list_lnp:
-                            for j in range(2):
-                                if j==0:
-                                    self.move_specific(["NeckRotation"],[-40])
-                                    rospy.loginfo('lnp reset')
-                                    rospy.sleep(3)
+                # Neck Rotation
+                for lnp in list_lnp:
+                    for j in range(2):
+                        if j==0:
+                            self.move_specific(["NeckRotation"],[-40])
+                            rospy.loginfo('lnp reset')
+                            rospy.sleep(3)
+                        else:
+                            self.move_specific(["NeckRotation"],[lnp])
+                            rospy.loginfo('lnp:%d' % (lnp))
+                            rospy.sleep(3)
+
+                    # Eyes
+                    for et in list_et:
+                        for ep in list_ep:             
+                            for k in range(2):
+                                if k==0:
+                                    # Reset
+                                    self.move_specific(["EyeTurnLeft","EyeTurnRight","EyesUpDown"],
+                                                        [-18,-18,22])
+                                    rospy.loginfo('et & ep reset')
+                                    rospy.sleep(1)
                                 else:
-                                    self.move_specific(["NeckRotation"],[lnp])
-                                    rospy.loginfo('lnp:%d' % (lnp))
-                                    rospy.sleep(3)
+                                    self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
+                                                        [ep,ep,et])
+                                    rospy.loginfo('et:%d, ep:%d' % (et,ep))
+                                    rospy.sleep(1)
+                                
+                            # Capture
+                            with self.left_cam_lock:
+                                left_img = copy.deepcopy(self.left_img)
+                            with self.right_cam_lock:
+                                right_img = copy.deepcopy(self.right_img)
+                            with self.chest_cam_lock:
+                                chest_img = copy.deepcopy(self.chest_img)
+                            with self.depth_cam_lock:
+                                depth_raw = copy.deepcopy(self.depth_raw)
+                                depth_img = copy.deepcopy(self.depth_img)
+                            with self.motor_lock:
+                                motor_state = [self._motor_states[i]['angle'] 
+                                                for i in range(len(self._motor_states))]
+                                print(self.motors)
+                                print(motor_state)
 
-                                    # Eyes
-                                    for et in list_et:
-                                        for ep in list_ep:             
-                                            for k in range(2):
-                                                if k==0:
-                                                    # Reset
-                                                    self.move_specific(["EyeTurnLeft","EyeTurnRight","EyesUpDown"],
-                                                                       [-18,-18,22])
-                                                    rospy.loginfo('et & ep reset')
-                                                    rospy.sleep(1)
-                                                else:
-                                                    self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
-                                                                       [ep,ep,et])
-                                                    rospy.loginfo('et:%d, ep:%d' % (et,ep))
-                                                    rospy.sleep(1)
-                                                
-                                            # Capture
-                                            with self.left_cam_lock:
-                                                left_img = copy.deepcopy(self.left_img)
-                                            with self.right_cam_lock:
-                                                right_img = copy.deepcopy(self.right_img)
-                                            with self.chest_cam_lock:
-                                                chest_img = copy.deepcopy(self.chest_img)
-                                            with self.depth_cam_lock:
-                                                depth_raw = copy.deepcopy(self.depth_raw)
-                                                depth_img = copy.deepcopy(self.depth_img)
-                                            with self.motor_lock:
-                                                motor_state = [self._motor_states[i]['angle'] 
-                                                               for i in range(len(self._motor_states))]
-                                                print(self.motors)
-                                                print(motor_state)
+                            # Visualization
+                            concat_img = np.hstack((chest_img, left_img, right_img, depth_img))
+                            height, width = concat_img.shape[:2]
+                            concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
 
-                                            # Visualization
-                                            concat_img = np.hstack((chest_img, left_img, right_img, depth_img))
-                                            height, width = concat_img.shape[:2]
-                                            concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
-
-                                            # Output Display 1
-                                            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
+                            # Output Display 1
+                            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
         
     
     def _capture_limits(self, motor):
