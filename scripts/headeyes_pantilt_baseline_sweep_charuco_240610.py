@@ -109,7 +109,7 @@ def transform_points(pts, T_mtx):
     return new_obj_pts
 
 
-class VisuoMotorNode(object):
+class HeadEyesSweepNode(object):
 
     rl_state = {  # RL environment on the network takes care of the other side
         'theta_left_pan': None,
@@ -146,9 +146,15 @@ class VisuoMotorNode(object):
         'data': [],
     }
 
-    def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown",
-                               "NeckRotation", "UpperGimbalLeft", "UpperGimbalRight",
-                               "LowerGimbalLeft", "LowerGimbalRight"], degrees=True):
+    def __init__(self, list_ep=list(range(-14,15,2)), 
+                 list_et=list(range(20,-31,-5)),
+                 list_lnp=list(range(-35,36,5)), 
+                 list_lnt=list(range(-10,31,10)),
+                 list_unt=list(range(40,-11,-10)),
+                 motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown",
+                         "NeckRotation", "UpperGimbalLeft", "UpperGimbalRight",
+                         "LowerGimbalLeft", "LowerGimbalRight"],
+                 degrees=True):
         # Timer Start
         self.start = time.time()
         rospy.loginfo('Starting')
@@ -160,6 +166,13 @@ class VisuoMotorNode(object):
         self.right_cam_lock = threading.Lock()
         self.chest_cam_lock = threading.Lock()
         self.depth_cam_lock = threading.Lock()
+
+        # Inputs
+        self.list_ep = list_ep
+        self.list_et = list_et
+        self.list_lnp = list_lnp
+        self.list_lnt = list_lnt
+        self.list_unt = list_unt
 
         # Initialization
         self.motors = motors
@@ -241,166 +254,6 @@ class VisuoMotorNode(object):
             depth_norm = depth_norm.astype(np.uint8)
             self.depth_img = cv2.applyColorMap(depth_norm, cv2.COLORMAP_JET)
 
-    def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
-        # Motor Trigger Sync (3.33 FPS or 299.99 ms)
-        max_stamp = max(left_img_msg.header.stamp, right_img_msg.header.stamp, chest_img_msg.header.stamp)
-        elapsed_time = (max_stamp - self.frame_stamp_tminus1).to_sec()
-        if elapsed_time > 1000e-3:
-            print('--------------')
-            rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
-            self.frame_stamp_tminus1 = max_stamp
-
-            # Initialization
-            theta_l_pan, theta_r_pan = None, None
-            
-            # Conversion of ROS Message
-            self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
-            self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
-            self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
-            self.depth_img = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
-            depth_map_normalized = copy.deepcopy(self.depth_img) / self.depth_img.max()  # Normalize values to [0, 1]
-            print(np.mean(self.depth_img)/1000.0)
-            gray_depth_img = (depth_map_normalized * 255).astype(np.uint8)
-            gray_depth_img = cv2.cvtColor(gray_depth_img, cv2.COLOR_GRAY2BGR)
-
-            ## Attention ##
-            
-            # Pan Target
-            self.chess_idx = self.chess_seq[self.ctr%self.num_chess_seq]
-            # print(self.chess_idx)
-            
-            # Process Left Eye, Right Eye, Chest Cam Target
-            left_eye_pxs = self.attention.process_img(self.chess_idx, copy.deepcopy(self.left_img))
-            right_eye_pxs = self.attention.process_img(self.chess_idx, copy.deepcopy(self.right_img))
-            chest_cam_pxs = self.attention.process_img(self.chess_idx, copy.deepcopy(self.chest_img))
-
-            # Calculate Delta between Gaze Center and Pixel Target
-            if chest_cam_pxs is None:
-                left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
-                right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
-                chest_cam_px = (424, 240)
-                left_eye_px_tminus1 = left_eye_px
-                right_eye_px_tminus1 = right_eye_px
-                chest_cam_px_tminus1 = chest_cam_px
-            elif left_eye_pxs is None or right_eye_pxs is None:
-                left_eye_px = (-self.calib_params['left_eye']['x_center'], -self.calib_params['left_eye']['y_center'])
-                right_eye_px = (-self.calib_params['right_eye']['x_center'], -self.calib_params['right_eye']['y_center'])
-                chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
-                left_eye_px_tminus1 = copy.deepcopy(left_eye_px)
-                right_eye_px_tminus1 = copy.deepcopy(right_eye_px)
-                chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
-            else:
-                # Preprocessing
-                left_eye_px = tuple(left_eye_pxs[self.chess_idx].tolist())
-                right_eye_px = tuple(right_eye_pxs[self.chess_idx].tolist())
-                chest_cam_px = tuple(chest_cam_pxs[self.chess_idx].tolist())
-                left_eye_px_tminus1 = left_eye_pxs[self.chess_idx_tminus1]
-                right_eye_px_tminus1 = right_eye_pxs[self.chess_idx_tminus1]
-                chest_cam_px_tminus1 = chest_cam_pxs[self.chess_idx_tminus1]
-
-            # Visualize the Previous Target
-            left_img = cv2.drawMarker(copy.deepcopy(self.left_img), (round(left_eye_px[0]),round(left_eye_px[1])), color=(204, 41, 204), 
-                                markerType=cv2.MARKER_STAR, markerSize=15, thickness=2)
-            left_img = cv2.drawMarker(left_img, (round(left_eye_px_tminus1[0]),round(left_eye_px_tminus1[1])), color=(0, 0, 255), 
-                                markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(copy.deepcopy(self.right_img), (round(right_eye_px[0]),round(right_eye_px[1])), color=(204, 41, 204), 
-                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            right_img = cv2.drawMarker(right_img, (round(right_eye_px_tminus1[0]),round(right_eye_px_tminus1[1])), color=(0, 0, 255), 
-                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(copy.deepcopy(self.chest_img), (round(chest_cam_px[0]),round(chest_cam_px[1])), color=(204, 41, 204), 
-                        markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
-            chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
-                        markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-
-            # Storing
-            with self.buffer_lock:
-                # Get Motor State
-                with self.motor_lock:
-
-                    self.rl_state['theta_left_pan'] = self._motor_states[0]['angle']
-                    self.rl_state['theta_right_pan'] = self._motor_states[1]['angle']
-                    self.rl_state['theta_tilt'] = self._motor_states[2]['angle']
-
-                    self.rl_state['chest_img'] = self.chest_img
-                    self.rl_state['left_eye_img'] = self.left_img
-                    self.rl_state['right_eye_img'] = self.right_img
-                    self.rl_state['depth_img'] = self.depth_img
-
-                    self.rl_state['chest_img_stamp'] = chest_img_msg.header.stamp.to_sec()
-                    self.rl_state['left_eye_img_stamp'] = left_img_msg.header.stamp.to_sec()
-                    self.rl_state['right_eye_img_stamp'] = right_img_msg.header.stamp.to_sec()
-                    self.rl_state['depth_img_stamp'] = depth_img_msg.header.stamp.to_sec()
-                    # print(self.rl_state)
-
-            # Wait for the new command
-            theta_l_pan_list = list(range(-18,19,2))
-            theta_r_pan_list = list(range(-18,19,2))
-            theta_tilt_list = list(range(20,-31,-5))
-            repetition = 5
-            
-            theta_tilt_ovr = theta_tilt_list[((self.ctr//2)//(len(theta_l_pan_list)*repetition))%(len(theta_tilt_list))]
-            
-            if self.ctr % 2 == 1:
-                theta_l_pan = theta_l_pan_list[(self.ctr//2)%(len(theta_l_pan_list))]
-                theta_r_pan = theta_r_pan_list[(self.ctr//2)%(len(theta_r_pan_list))]
-            else:
-                theta_l_pan = -18
-                theta_r_pan = -18
-                theta_tilt_ovr = 22
-            
-            print('debug:', theta_l_pan, theta_r_pan, theta_tilt_ovr)
-            
-            self.move((theta_l_pan, theta_r_pan, theta_tilt_ovr))
-            with self.buffer_lock:
-                self.rl_state['theta_left_pan_cmd'] = theta_l_pan
-                self.rl_state['theta_right_pan_cmd'] = theta_r_pan 
-                self.rl_state['theta_tilt_cmd'] = theta_tilt_ovr
-                self.pickle_data['data'].append(copy.deepcopy(self.rl_state))
-
-            # Visualization
-            left_img = self.ctr_cross_img(left_img, 'left_eye')
-            right_img = self.ctr_cross_img(right_img, 'right_eye')
-            chest_img = self.ctr_cross_img(chest_img, 'chest_cam')
-            concat_img = np.hstack((chest_img, left_img, right_img, gray_depth_img))
-            
-            # Resizing
-            height, width = concat_img.shape[:2]
-            concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
-
-            # Output Display 1
-            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
-
-            # Reassigning
-            self.chess_idx_tminus1 = self.chess_idx
-    
-            # Saving
-            self.ctr+=1
-            rospy.loginfo("===%i/%i" % (self.ctr, self.num_ctr))
-            if self.ctr==self.num_ctr:
-                
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                results_dir = os.path.join(parent_dir, 'results','pantilt_baseline_sweep_charuco')
-                if not os.path.exists(results_dir):
-                    os.makedirs(results_dir)
-                    print(f"Directory created: {results_dir}")
-                else:
-                    print(f"Directory already exists: {results_dir}")
-                
-                dt_str = datetime.now().strftime("_%Y%m%d_%H%M%S_%f")
-                title_str = 'pantilt_baseline_sweep_charuco'
-                pickle_path = os.path.join(results_dir, title_str+'_pickle'+dt_str+'.pickle')
-
-                # Saving to Pickle File
-                with open(pickle_path, 'wb') as file:
-                    pickle.dump(self.pickle_data, file)
-                print('=====================')
-                print('Pickle file saved in:', pickle_path)
-
-                end = time.time()
-                print('[ELAPSED_TIME]', (end-self.start), 'secs')
-                rospy.signal_shutdown('End')
-                sys.exit()
-
     def run(self):
         rospy.loginfo('Running')
 
@@ -422,24 +275,17 @@ class VisuoMotorNode(object):
         else:
             print(f"Subdirectory already exists: {sub_dir}")
 
-        # List of Motor Commands
-        list_ep = list(range(-14,15,2))
-        list_et = list(range(20,-31,-5))
-        list_lnp = list(range(-35,36,5))
-        list_lnt = list(range(-10,31,10))
-        list_unt = list(range(40,-11,-10))
-
         # Total Counter
         ctr = 0
-        total_ctr = len(list_ep)*len(list_et)*len(list_lnp)*len(list_lnt)*len(list_unt)
+        total_ctr = len(self.list_ep)*len(self.list_et)*len(self.list_lnp)*len(self.list_lnt)*len(self.list_unt)
 
         # Get Images
         global left_img, left_img, right_img, chest_img
         global depth_raw, depth_img
 
         # Neck
-        for lnt in list_lnt:
-            for unt in list_unt:
+        for lnt in self.list_lnt:
+            for unt in self.list_unt:
                 for i in range(2):
                     if i==0:
                         self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
@@ -453,7 +299,7 @@ class VisuoMotorNode(object):
                         rospy.sleep(3)
                     
                 # Neck Rotation
-                for lnp in list_lnp:
+                for lnp in self.list_lnp:
                     for j in range(2):
                         if j==0:
                             self.move_specific(["NeckRotation"],[-40])
@@ -500,12 +346,12 @@ class VisuoMotorNode(object):
                                           }
 
                     eye_ctr = 0
-                    total_eye_ctr = len(list_ep)*len(list_et)
+                    total_eye_ctr = len(self.list_ep)*len(self.list_et)
                     eye_start = time.time()
 
                     # Eyes
-                    for et in list_et:
-                        for ep in list_ep:             
+                    for et in self.list_et:
+                        for ep in self.list_ep:             
                             for k in range(2):
                                 if k==0:
                                     # Reset
@@ -691,6 +537,6 @@ class VisuoMotorNode(object):
 
 
 if __name__ == '__main__':
-    rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode()  # Manual Calculation (19(pan)x11(tilt)x2x2(reps)+2)
+    rospy.init_node('headeyes_sweep')
+    vismotor = HeadEyesSweepNode(list_lnt=[0],list_unt=[0])
     vismotor.run()
