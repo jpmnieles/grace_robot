@@ -63,16 +63,26 @@ class VisuoMotorNode(object):
     def __init__(self, motors=["EyeTurnLeft", "EyeTurnRight", "EyesUpDown",
                                "NeckRotation", "UpperGimbalLeft", "UpperGimbalRight",
                                "LowerGimbalLeft", "LowerGimbalRight"], degrees=True):
+        # Timer Start
         self.start = time.time()
+        rospy.loginfo('Starting')
+
+        # Locks
         self.motor_lock = threading.Lock()
         self.buffer_lock = threading.Lock()
+        self.left_cam_lock = threading.Lock()
+        self.right_cam_lock = threading.Lock()
+        self.chest_cam_lock = threading.Lock()
+        self.depth_cam_lock = threading.Lock()
+
+        # Initialization
         self.motors = motors
         self.degrees = degrees
         self._set_motor_limits(motors)
-
-        # self.joint_state_pub = rospy.Publisher('/demand_joint_states', JointState, queue_size=1)
-        self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
         self.camera_mtx = load_camera_mtx()
+        self.calib_params = load_json('config/calib/calib_params.json')
+        self.motor_pub = rospy.Publisher('/hr/actuators/pose', TargetPosture, queue_size=1)
+        self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
         self.bridge = CvBridge()
         time.sleep(1)
         
@@ -90,19 +100,15 @@ class VisuoMotorNode(object):
         self.move((0, 0, 0))
         time.sleep(1.0)
 
+        # Subscribers
         self.motor_sub = rospy.Subscriber('/hr/actuators/motor_states', MotorStateList, self._capture_state)
-        self.left_eye_sub = message_filters.Subscriber("/left_eye/image_raw", Image)
-        self.right_eye_sub = message_filters.Subscriber("/right_eye/image_raw", Image)  # TODO: change to right eye when there is better camera
-        self.chest_cam_sub = message_filters.Subscriber('/hr/perception/jetson/realsense/camera/color/image_raw', Image)
-        self.depth_cam_sub = message_filters.Subscriber('/hr/perception/jetson/realsense/camera/aligned_depth_to_color/image_raw', Image)
-        self.ats = message_filters.ApproximateTimeSynchronizer([self.left_eye_sub, self.right_eye_sub, 
-                                                                self.chest_cam_sub, self.depth_cam_sub], queue_size=1, slop=0.25)
-        self.ats.registerCallback(self.eye_imgs_callback)
-        self.rt_display_pub = rospy.Publisher('/output_display1', Image, queue_size=1)
-
-        self.disp_img = np.zeros((480,640,3), dtype=np.uint8)
-        self.calib_params = load_json('config/calib/calib_params.json')
-        rospy.loginfo('Running')
+        self.left_cam_sub = rospy.Subscriber('/left_eye/image_raw', Image, self.left_img_callback)
+        self.right_cam_sub = rospy.Subscriber('/right_eye/image_raw', Image, self.right_img_callback)
+        self.chest_cam_sub = rospy.Subscriber('/hr/perception/jetson/realsense/camera/color/image_raw', 
+                                              Image, self.chest_img_callback)
+        self.depth_cam_sub = rospy.Subscriber('/hr/perception/jetson/realsense/camera/aligned_depth_to_color/image_raw', 
+                                              Image, self.depth_img_callback)
+        time.sleep(3.0)
 
     def _capture_state(self, msg):
         """Callback for capturing motor state
@@ -130,6 +136,25 @@ class VisuoMotorNode(object):
         x = ((u-cx)/fx)*z
         y = ((v-cy)/fy)*z
         return x,y,z
+
+    def left_img_callback(self, left_img_msg):
+        with self.left_cam_lock:
+            self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
+    
+    def right_img_callback(self, right_img_msg):
+        with self.right_cam_lock:
+            self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
+
+    def chest_img_callback(self, chest_img_msg):
+        with self.chest_cam_lock:
+            self.chest_img = self.bridge.imgmsg_to_cv2(chest_img_msg, "bgr8")
+
+    def depth_img_callback(self, depth_img_msg):
+        with self.depth_cam_lock:
+            self.depth_raw = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
+            depth_norm = 255*(copy.deepcopy(self.depth_raw) - 300) / (3000-300)
+            depth_norm = depth_norm.astype(np.uint8)
+            self.depth_img = cv2.applyColorMap(depth_norm, cv2.COLORMAP_JET)
 
     def eye_imgs_callback(self, left_img_msg, right_img_msg, chest_img_msg, depth_img_msg):
         # Motor Trigger Sync (3.33 FPS or 299.99 ms)
@@ -201,12 +226,6 @@ class VisuoMotorNode(object):
                         markerType=cv2.MARKER_STAR, markerSize=13, thickness=2)
             chest_img = cv2.drawMarker(chest_img, (round(chest_cam_px_tminus1[0]),round(chest_cam_px_tminus1[1])), color=(0, 0, 255), 
                         markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            
-            # Dx and Dy for Left and Right
-            dx_l = left_eye_px_tminus1[0] - self.calib_params['left_eye']['x_center']
-            dy_l = self.calib_params['left_eye']['y_center'] - left_eye_px_tminus1[1]
-            dx_r = right_eye_px_tminus1[0] - self.calib_params['right_eye']['x_center']
-            dy_r = self.calib_params['right_eye']['y_center'] - right_eye_px_tminus1[1]
 
             # Storing
             with self.buffer_lock:
@@ -297,6 +316,35 @@ class VisuoMotorNode(object):
                 rospy.signal_shutdown('End')
                 sys.exit()
 
+    def run(self):
+        rospy.loginfo('Running')
+
+        # List of Motor Commands
+        list_lep = list(range(-14,15,2))
+        list_rep = list(range(-14,15,2))
+        list_et = list(range(20,-31,-5))
+        list_lnp = list(range(-35,36,5))
+        list_lnt = list(range(-10,31,10))
+        list_unt = list(range(40,-11,-10))
+
+        # Get Images
+        rate = rospy.Rate(7)
+        global left_img, left_img, right_img, chest_img
+        global depth_raw, depth_img
+        while not rospy.is_shutdown():
+            with self.left_cam_lock:
+                left_img = copy.deepcopy(self.left_img)
+            with self.right_cam_lock:
+                right_img = copy.deepcopy(self.right_img)
+            with self.chest_cam_lock:
+                chest_img = copy.deepcopy(self.chest_img)
+            with self.depth_cam_lock:
+                depth_raw = copy.deepcopy(self.depth_raw)
+                depth_img = copy.deepcopy(self.depth_img)
+            rospy.loginfo('Test')
+            rate.sleep()
+        
+    
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
         int_init = motors_dict[motor]['init']
@@ -356,5 +404,5 @@ class VisuoMotorNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('visuomotor')
-    vismotor = VisuoMotorNode(chess_seq=[0,2,4,6,8,6,4,2],num_trials=2092)  # Manual Calculation (19(pan)x11(tilt)x2x2(reps)+2)
-    rospy.spin()
+    vismotor = VisuoMotorNode()  # Manual Calculation (19(pan)x11(tilt)x2x2(reps)+2)
+    vismotor.run()
