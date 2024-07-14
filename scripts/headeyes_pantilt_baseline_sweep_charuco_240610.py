@@ -52,6 +52,17 @@ class VisuoMotorNode(object):
         'theta_right_pan_cmd': None,
         'theta_tilt_cmd': None,
     }
+
+    motor_state = {
+        "EyeTurnLeft": None,
+        "EyeTurnRight": None, 
+        "EyesUpDown": None,
+        "NeckRotation": None,
+        "UpperGimbalLeft": None,
+        "UpperGimbalRight": None,
+        "LowerGimbalLeft": None,
+        "LowerGimbalRight": None
+    }
     
     pickle_data = {
         'subject_num': None,
@@ -113,14 +124,13 @@ class VisuoMotorNode(object):
     def _capture_state(self, msg):
         """Callback for capturing motor state
         """
-        updated_motors_list = []
         self._msg = msg
-        for idx, motor_msg in enumerate(msg.motor_states):
-            if motor_msg.name in self.names:
-                idx = self.motors.index(motor_msg.name)
-                self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
-                self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
-                updated_motors_list.append(motor_msg.name)
+        with self.motor_lock:
+            for idx, motor_msg in enumerate(msg.motor_states):
+                if motor_msg.name in self.names:
+                    idx = self.motors.index(motor_msg.name)
+                    self._motor_states[idx] = message_converter.convert_ros_message_to_dictionary(motor_msg)
+                    self._motor_states[idx]['angle'] = motor_int_to_angle(motor_msg.name, motor_msg.position, self.degrees)
       
     def depth_to_pointcloud(self, px, depth_img, camera_mtx, z_replace=1.0):  
         fx = camera_mtx[0][0]
@@ -152,7 +162,7 @@ class VisuoMotorNode(object):
     def depth_img_callback(self, depth_img_msg):
         with self.depth_cam_lock:
             self.depth_raw = self.bridge.imgmsg_to_cv2(depth_img_msg, "16UC1")
-            depth_norm = 255*(copy.deepcopy(self.depth_raw) - 300) / (3000-300)
+            depth_norm = 255*(copy.deepcopy(self.depth_raw) / self.depth_raw.max())
             depth_norm = depth_norm.astype(np.uint8)
             self.depth_img = cv2.applyColorMap(depth_norm, cv2.COLORMAP_JET)
 
@@ -368,20 +378,34 @@ class VisuoMotorNode(object):
                                                     rospy.loginfo('et & ep reset')
                                                     rospy.sleep(1)
                                                 else:
-                                                    # Capture
-                                                    with self.left_cam_lock:
-                                                        left_img = copy.deepcopy(self.left_img)
-                                                    with self.right_cam_lock:
-                                                        right_img = copy.deepcopy(self.right_img)
-                                                    with self.chest_cam_lock:
-                                                        chest_img = copy.deepcopy(self.chest_img)
-                                                    with self.depth_cam_lock:
-                                                        depth_raw = copy.deepcopy(self.depth_raw)
-                                                        depth_img = copy.deepcopy(self.depth_img)
                                                     self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
                                                                        [ep,ep,et])
                                                     rospy.loginfo('et:%d, ep:%d' % (et,ep))
                                                     rospy.sleep(1)
+                                                
+                                            # Capture
+                                            with self.left_cam_lock:
+                                                left_img = copy.deepcopy(self.left_img)
+                                            with self.right_cam_lock:
+                                                right_img = copy.deepcopy(self.right_img)
+                                            with self.chest_cam_lock:
+                                                chest_img = copy.deepcopy(self.chest_img)
+                                            with self.depth_cam_lock:
+                                                depth_raw = copy.deepcopy(self.depth_raw)
+                                                depth_img = copy.deepcopy(self.depth_img)
+                                            with self.motor_lock:
+                                                motor_state = [self._motor_states[i]['angle'] 
+                                                               for i in range(len(self._motor_states))]
+                                                print(self.motors)
+                                                print(motor_state)
+
+                                            # Visualization
+                                            concat_img = np.hstack((chest_img, left_img, right_img, depth_img))
+                                            height, width = concat_img.shape[:2]
+                                            concat_img = cv2.resize(concat_img, (round(width/2), round(height/2)))
+
+                                            # Output Display 1
+                                            self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
         
     
     def _capture_limits(self, motor):
