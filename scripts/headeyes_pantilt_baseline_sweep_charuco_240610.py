@@ -91,7 +91,7 @@ class VisuoMotorNode(object):
         time.sleep(3.0)
         self.move((0, 0, 0, 0, 0, 0, 0, 0))
         time.sleep(3.0)
-        self.move((0, 0, 0, -35, 0, 0, 0, 0))
+        self.move((0, 0, 0, -40, 0, 0, 0, 0))
         time.sleep(3.0)
         self.move((0, 0, 0, 0, 0, 0, 0, 0))
         time.sleep(3.0)
@@ -320,29 +320,68 @@ class VisuoMotorNode(object):
         rospy.loginfo('Running')
 
         # List of Motor Commands
-        list_lep = list(range(-14,15,2))
-        list_rep = list(range(-14,15,2))
+        list_ep = list(range(-14,15,2))
         list_et = list(range(20,-31,-5))
         list_lnp = list(range(-35,36,5))
         list_lnt = list(range(-10,31,10))
         list_unt = list(range(40,-11,-10))
 
         # Get Images
-        rate = rospy.Rate(7)
         global left_img, left_img, right_img, chest_img
         global depth_raw, depth_img
-        while not rospy.is_shutdown():
-            with self.left_cam_lock:
-                left_img = copy.deepcopy(self.left_img)
-            with self.right_cam_lock:
-                right_img = copy.deepcopy(self.right_img)
-            with self.chest_cam_lock:
-                chest_img = copy.deepcopy(self.chest_img)
-            with self.depth_cam_lock:
-                depth_raw = copy.deepcopy(self.depth_raw)
-                depth_img = copy.deepcopy(self.depth_img)
-            rospy.loginfo('Test')
-            rate.sleep()
+
+        # Neck
+        for lnt in list_lnt:
+            for unt in list_unt:
+                for i in range(2):
+                    if i==0:
+                        self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
+                                           [44,-44,-13,13])
+                        rospy.loginfo('lnt & unt reset')
+                        rospy.sleep(3)
+                    else:
+                        self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
+                                           [unt,-unt,-lnt,lnt])
+                        rospy.loginfo('lnt:%d, unt:%d' % (lnt,unt))
+                        rospy.sleep(3)
+                    
+                        # Neck Rotation
+                        for lnp in list_lnp:
+                            for j in range(2):
+                                if j==0:
+                                    self.move_specific(["NeckRotation"],[-40])
+                                    rospy.loginfo('lnp reset')
+                                    rospy.sleep(3)
+                                else:
+                                    self.move_specific(["NeckRotation"],[lnp])
+                                    rospy.loginfo('lnp:%d' % (lnp))
+                                    rospy.sleep(3)
+
+                                    # Eyes
+                                    for et in list_et:
+                                        for ep in list_ep:             
+                                            for k in range(2):
+                                                if k==0:
+                                                    # Reset
+                                                    self.move_specific(["EyeTurnLeft","EyeTurnRight","EyesUpDown"],
+                                                                       [-18,-18,22])
+                                                    rospy.loginfo('et & ep reset')
+                                                    rospy.sleep(1)
+                                                else:
+                                                    # Capture
+                                                    with self.left_cam_lock:
+                                                        left_img = copy.deepcopy(self.left_img)
+                                                    with self.right_cam_lock:
+                                                        right_img = copy.deepcopy(self.right_img)
+                                                    with self.chest_cam_lock:
+                                                        chest_img = copy.deepcopy(self.chest_img)
+                                                    with self.depth_cam_lock:
+                                                        depth_raw = copy.deepcopy(self.depth_raw)
+                                                        depth_img = copy.deepcopy(self.depth_img)
+                                                    self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
+                                                                       [ep,ep,et])
+                                                    rospy.loginfo('et:%d, ep:%d' % (et,ep))
+                                                    rospy.sleep(1)
         
     
     def _capture_limits(self, motor):
@@ -380,7 +419,7 @@ class VisuoMotorNode(object):
         args = {"names":self.names, "values":values}
         self.motor_pub.publish(TargetPosture(**args))
     
-    def move_specific(self, names, values):
+    def move_specific(self, names:list, values:list):
         values = [self._check_limits(names[i],x) for i,x in enumerate(values)]
         if self.degrees:
             values = [math.radians(x) for x in values]
