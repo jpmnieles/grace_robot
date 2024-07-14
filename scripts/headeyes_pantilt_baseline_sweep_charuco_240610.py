@@ -34,6 +34,81 @@ from aec.baseline import BaselineCalibration
 from grace.attention import *
 
 
+CALIB_PARAMS = load_json('config/calib/calib_params.json')
+CAMERA_MTX = load_json("config/camera/camera_mtx.json")
+LEFT_EYE_CAMERA_MTX = np.array(CAMERA_MTX['left_eye']['camera_matrix'])
+LEFT_EYE_DIST_COEF = np.array(CAMERA_MTX['left_eye']['distortion_coefficients']).squeeze()
+RIGHT_EYE_CAMERA_MTX = np.array(CAMERA_MTX['right_eye']['camera_matrix'])
+RIGHT_EYE_DIST_COEF = np.array(CAMERA_MTX['right_eye']['distortion_coefficients']).squeeze()
+CHEST_CAM_CAMERA_MTX = np.array(CAMERA_MTX['chest_cam']['camera_matrix'])
+CHEST_CAM_DIST_COEF = np.array(CAMERA_MTX['chest_cam']['distortion_coefficients']).squeeze()
+
+attention = ChArucoAttention()
+
+def get_charuco_camera_pose(img, camera_mtx, dist_coef):
+    charuco_corners, charuco_ids, marker_corners, marker_ids = attention.charuco_detector.detectBoard(img)
+    if not (charuco_ids is None) and len(charuco_ids) >= 4:
+        try:
+            obj_points, img_points = attention.board.matchImagePoints(charuco_corners, charuco_ids)
+            flag, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_mtx, dist_coef)
+
+            # Convert the rotation vector to a rotation matrix
+            rotation_matrix, _ = cv2.Rodrigues(rvec)
+    
+            # Homogeneous Coordinates
+            H = np.eye(4)
+            H[:3,:3] = rotation_matrix
+            H[:3,-1] = tvec.T
+    
+            # Camera Pose
+            T = np.linalg.inv(H)
+        
+        except cv2.error as error_inst:
+            print("SolvePnP recognize calibration pattern as non-planar pattern. To process this need to use "
+                  "minimum 6 points. The planar pattern may be mistaken for non-planar if the pattern is "
+                  "deformed or incorrect camera parameters are used.")
+            print(error_inst.err)
+            T = None
+    else:
+        T = None
+
+    return T
+
+def get_world_deproject(eye, camera_mtx, dist_coef, T_be):
+    # Foveal Center
+    gx = CALIB_PARAMS[eye]['x_center']
+    gy = CALIB_PARAMS[eye]['y_center']
+
+    # Get Normalized Camera Coordinates
+    x_prime, y_prime = cv2.undistortPoints((gx,gy),   # x' = X_C/Z_C
+                        camera_mtx,                   # y' = Y_C/Z_C
+                        dist_coef).squeeze()
+
+    # Inverse of T_be
+    T = np.linalg.inv(T_be)
+
+    # System of Linear Equations
+    a = np.array([[T[0,0],T[0,1],-x_prime], 
+                  [T[1,0],T[1,1],-y_prime],
+                  [T[2,0],T[2,1],-1.0]])
+    b = np.array([-T[0,3],-T[1,3],-T[2,3]])
+    
+    # Deprojection
+    x = np.linalg.solve(a,b)  # X_W, Y_W, Z_C
+    world_pts = np.array([x[0],x[1],0])  # X_W, Y_W, Z_W
+
+    return world_pts
+
+def transform_points(pts, T_mtx):
+    new_obj_pts = []
+    for pt in pts:
+        temp_pt = np.append(pt, 1).reshape(-1,1)
+        temp_pt2 = (T_mtx @ temp_pt).squeeze()
+        new_obj_pts.append(temp_pt2[:3])
+    new_obj_pts = np.array(new_obj_pts)
+    return new_obj_pts
+
+
 class VisuoMotorNode(object):
 
     rl_state = {  # RL environment on the network takes care of the other side
@@ -329,12 +404,34 @@ class VisuoMotorNode(object):
     def run(self):
         rospy.loginfo('Running')
 
+        # Create Directory
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        results_dir = os.path.join(parent_dir, 'results','headeyes_pantilt_sweep_charuco')
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+            print(f"Directory created: {results_dir}")
+        else:
+            print(f"Directory already exists: {results_dir}")
+        
+        # Create Subdirectory
+        dt_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        sub_dir = os.path.join(results_dir, dt_str)
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
+            print(f"Subdirectory created: {sub_dir}")
+        else:
+            print(f"Subdirectory already exists: {sub_dir}")
+
         # List of Motor Commands
         list_ep = list(range(-14,15,2))
         list_et = list(range(20,-31,-5))
         list_lnp = list(range(-35,36,5))
         list_lnt = list(range(-10,31,10))
         list_unt = list(range(40,-11,-10))
+
+        # Total Counter
+        ctr = 0
+        total_ctr = len(list_ep)*len(list_et)*len(list_lnp)*len(list_lnt)*len(list_unt)
 
         # Get Images
         global left_img, left_img, right_img, chest_img
@@ -366,6 +463,45 @@ class VisuoMotorNode(object):
                             self.move_specific(["NeckRotation"],[lnp])
                             rospy.loginfo('lnp:%d' % (lnp))
                             rospy.sleep(3)
+
+                    # Initialization
+                    left_headeyes_dict = {'x_c': [],
+                                          'y_c': [],
+                                          'z_c': [],
+                                          'cmd_theta_lower_neck_pan':[],
+                                          'cmd_theta_lower_neck_tilt':[],
+                                          'cmd_theta_upper_neck_tilt':[],
+                                          'cmd_theta_left_eye': [],
+                                          'cmd_theta_tilt':[],
+                                          'state_theta_lower_neck_pan':[],
+                                          'state_theta_left_lower_neck_tilt':[],
+                                          'state_theta_right_lower_neck_tilt':[],
+                                          'state_theta_left_upper_neck_tilt':[],
+                                          'state_theta_right_upper_neck_tilt':[],
+                                          'state_theta_left_eye': [],
+                                          'state_theta_tilt':[],
+                                          }
+                    
+                    right_headeyes_dict = {'x_c': [],
+                                           'y_c': [],
+                                           'z_c': [],
+                                           'cmd_theta_lower_neck_pan':[],
+                                           'cmd_theta_lower_neck_tilt':[],
+                                           'cmd_theta_upper_neck_tilt':[],
+                                           'cmd_theta_right_eye': [],
+                                           'cmd_theta_tilt':[],
+                                           'state_theta_lower_neck_pan':[],
+                                           'state_theta_left_lower_neck_tilt':[],
+                                           'state_theta_right_lower_neck_tilt':[],
+                                           'state_theta_left_upper_neck_tilt':[],
+                                           'state_theta_right_upper_neck_tilt':[],
+                                           'state_theta_right_eye': [],
+                                           'state_theta_tilt':[],
+                                          }
+
+                    eye_ctr = 0
+                    total_eye_ctr = len(list_ep)*len(list_et)
+                    eye_start = time.time()
 
                     # Eyes
                     for et in list_et:
@@ -399,6 +535,72 @@ class VisuoMotorNode(object):
                                 print(self.motors)
                                 print(motor_state)
 
+                            # Charuco Processing
+                            T_bc = get_charuco_camera_pose(chest_img, CHEST_CAM_CAMERA_MTX, CHEST_CAM_DIST_COEF)
+                            T_bl = get_charuco_camera_pose(left_img, LEFT_EYE_CAMERA_MTX, LEFT_EYE_DIST_COEF)
+                            T_br = get_charuco_camera_pose(right_img, RIGHT_EYE_CAMERA_MTX, RIGHT_EYE_DIST_COEF)
+
+                            if T_bl is not None:
+                                l_X = get_world_deproject('left_eye', 
+                                                          LEFT_EYE_CAMERA_MTX, 
+                                                          LEFT_EYE_DIST_COEF, 
+                                                          T_bl)
+                                l_x_c, l_y_c, l_z_c = transform_points(l_X, np.linalg.inv(T_bc)).tolist()
+                            else:
+                                l_x_c = -100
+                                l_y_c = -100
+                                l_z_c = -100
+
+                            if T_br is not None:
+                                r_X = get_world_deproject('right_eye', 
+                                                          RIGHT_EYE_CAMERA_MTX, 
+                                                          RIGHT_EYE_DIST_COEF, 
+                                                          T_br)
+                                r_x_c, r_y_c, r_z_c = transform_points(r_X, np.linalg.inv(T_bc)).tolist()
+                            else:
+                                r_x_c = -100
+                                r_y_c = -100
+                                r_z_c = -100
+
+                            # Storage
+                            left_headeyes_dict['x_c'].append(l_x_c)
+                            left_headeyes_dict['y_c'].append(l_y_c)
+                            left_headeyes_dict['z_c'].append(l_z_c)
+                            left_headeyes_dict['cmd_theta_lower_neck_pan'].append(lnp)
+                            left_headeyes_dict['cmd_theta_lower_neck_tilt'].append(lnt)
+                            left_headeyes_dict['cmd_theta_upper_neck_tilt'].append(unt)
+                            left_headeyes_dict['cmd_theta_left_eye'].append(ep)
+                            left_headeyes_dict['cmd_theta_tilt'].append(et)
+                            left_headeyes_dict['state_theta_lower_neck_pan'].append(motor_state[3])
+                            left_headeyes_dict['state_theta_left_lower_neck_tilt'].append(motor_state[6])
+                            left_headeyes_dict['state_theta_right_lower_neck_tilt'].append(motor_state[7])
+                            left_headeyes_dict['state_theta_left_upper_neck_tilt'].append(motor_state[4])
+                            left_headeyes_dict['state_theta_right_upper_neck_tilt'].append(motor_state[5])
+                            left_headeyes_dict['state_theta_left_eye'].append(motor_state[0])
+                            left_headeyes_dict['state_theta_tilt'].append(motor_state[2])
+
+                            right_headeyes_dict['x_c'].append(r_x_c)
+                            right_headeyes_dict['y_c'].append(r_y_c)
+                            right_headeyes_dict['z_c'].append(r_z_c)
+                            right_headeyes_dict['cmd_theta_lower_neck_pan'].append(lnp)
+                            right_headeyes_dict['cmd_theta_lower_neck_tilt'].append(lnt)
+                            right_headeyes_dict['cmd_theta_upper_neck_tilt'].append(unt)
+                            right_headeyes_dict['cmd_theta_right_eye'].append(ep)
+                            right_headeyes_dict['cmd_theta_tilt'].append(et)
+                            right_headeyes_dict['state_theta_lower_neck_pan'].append(motor_state[3])
+                            right_headeyes_dict['state_theta_left_lower_neck_tilt'].append(motor_state[6])
+                            right_headeyes_dict['state_theta_right_lower_neck_tilt'].append(motor_state[7])
+                            right_headeyes_dict['state_theta_left_upper_neck_tilt'].append(motor_state[4])
+                            right_headeyes_dict['state_theta_right_upper_neck_tilt'].append(motor_state[5])
+                            right_headeyes_dict['state_theta_right_eye'].append(motor_state[1])
+                            right_headeyes_dict['state_theta_tilt'].append(motor_state[2])
+
+                            # Counter
+                            eye_ctr+=1
+                            ctr+=1
+                            rospy.loginfo("*** Eye Ctr: %i/%i ***" % (eye_ctr, total_eye_ctr))
+                            rospy.loginfo("=== Overall Ctr: %i/%i ===" % (ctr, total_ctr))
+
                             # Visualization
                             concat_img = np.hstack((chest_img, left_img, right_img, depth_img))
                             height, width = concat_img.shape[:2]
@@ -407,6 +609,29 @@ class VisuoMotorNode(object):
                             # Output Display 1
                             self.rt_display_pub.publish(self.bridge.cv2_to_imgmsg(concat_img, encoding="bgr8"))
         
+                    # Pandas Dataframe
+                    l_df = pd.DataFrame(left_headeyes_dict)
+                    r_df = pd.DataFrame(right_headeyes_dict)
+
+                    # Saving CSV
+                    title_str = 'lnt%03i_unt%03i_lnp%03i' % (lnt,unt,lnp)
+                    l_csv_path = os.path.join(sub_dir, 'left_'+title_str+'.csv')
+                    r_csv_path = os.path.join(sub_dir, 'right_'+title_str+'.csv')
+                    l_df.to_csv(l_csv_path, index=False)
+                    r_df.to_csv(r_csv_path, index=False)
+                    print('Left csv file saved in:', l_csv_path)
+                    print('Right csv file saved in:', r_csv_path)
+
+                    # Timer
+                    eye_end = time.time()
+                    print('[EYE ELAPSED_TIME]', (eye_end-eye_start), 'secs')
+
+        # End
+        # Timer
+        end = time.time()
+        print('[TOTAL ELAPSED_TIME]', (end-self.start)/60.0, 'mins')
+        rospy.signal_shutdown('End')
+        sys.exit()
     
     def _capture_limits(self, motor):
         int_min = motors_dict[motor]['motor_min']
