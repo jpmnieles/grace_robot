@@ -43,7 +43,7 @@ RIGHT_EYE_DIST_COEF = np.array(CAMERA_MTX['right_eye']['distortion_coefficients'
 CHEST_CAM_CAMERA_MTX = np.array(CAMERA_MTX['chest_cam']['camera_matrix'])
 CHEST_CAM_DIST_COEF = np.array(CAMERA_MTX['chest_cam']['distortion_coefficients']).squeeze()
 
-attention = ChArucoAttention()
+attention = ExpChArucoAttention()
 
 def get_charuco_camera_pose(img, camera_mtx, dist_coef):
     charuco_corners, charuco_ids, marker_corners, marker_ids = attention.charuco_detector.detectBoard(img)
@@ -294,7 +294,7 @@ class HeadEyesSweepNode(object):
                         rospy.sleep(3)
                     else:
                         self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
-                                           [unt,-unt,-lnt,lnt])
+                                           [unt,-unt,lnt,-lnt])
                         rospy.loginfo('lnt:%d, unt:%d' % (lnt,unt))
                         rospy.sleep(3)
                     
