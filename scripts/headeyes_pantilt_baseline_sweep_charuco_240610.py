@@ -291,7 +291,7 @@ class HeadEyesSweepNode(object):
                         self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
                                            [44,-44,-13,13])
                         rospy.loginfo('lnt & unt reset')
-                        rospy.sleep(3)
+                        rospy.sleep(1.5)
                     else:
                         self.move_specific(["UpperGimbalLeft","UpperGimbalRight","LowerGimbalLeft","LowerGimbalRight"],
                                            [unt,-unt,lnt,-lnt])
@@ -304,7 +304,7 @@ class HeadEyesSweepNode(object):
                         if j==0:
                             self.move_specific(["NeckRotation"],[-40])
                             rospy.loginfo('lnp reset')
-                            rospy.sleep(3)
+                            rospy.sleep(1.5)
                         else:
                             self.move_specific(["NeckRotation"],[lnp])
                             rospy.loginfo('lnp:%d' % (lnp))
@@ -358,7 +358,7 @@ class HeadEyesSweepNode(object):
                                     self.move_specific(["EyeTurnLeft","EyeTurnRight","EyesUpDown"],
                                                         [-18,-18,22])
                                     rospy.loginfo('et & ep reset')
-                                    rospy.sleep(1)
+                                    rospy.sleep(0.5)
                                 else:
                                     self.move_specific(["EyeTurnLeft", "EyeTurnRight", "EyesUpDown"],
                                                         [ep,ep,et])
