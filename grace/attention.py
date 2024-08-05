@@ -109,6 +109,21 @@ class ChArucoAttention(object):
         self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
         self.charuco_detector = aruco.CharucoDetector(self.board)
+
+
+class SmallChArucoAttention(object):
+
+    def __init__(self, square_length=0.1082, marker_length=0.0843) -> None:
+        self.chess_squares = (11, 6)
+        self.square_length = square_length  # [Sweep] 10.82 cm
+        self.marker_length = marker_length  # [Sweep] 8.43 cm      
+        self.dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_100)
+        self.parameters = aruco.DetectorParameters()
+        self.parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+        self.board = aruco.CharucoBoard(self.chess_squares, self.square_length, self.marker_length, self.dictionary)
+        self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+        self.charuco_detector = aruco.CharucoDetector(self.board)
         
 
 class ArucoAttention(object):
