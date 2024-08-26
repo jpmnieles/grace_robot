@@ -108,6 +108,13 @@ def transform_points(pts, T_mtx):
     new_obj_pts = np.array(new_obj_pts)
     return new_obj_pts
 
+def chest_rgb_to_eye(T_chest, T_input):
+    T_chest_inv = np.linalg.inv(T_chest)  # T_cb = T_bc^(-1)
+    T_ce = np.matmul(T_chest_inv, T_input)  # T_ce = T_cb x T_be
+    rvec, _ = cv2.Rodrigues(T_ce[:3,:3])
+    tvec = T_ce[:3,3]
+    return T_ce, rvec.flatten(), tvec.flatten()
+
 
 class HeadEyesSweepNode(object):
 
@@ -326,6 +333,12 @@ class HeadEyesSweepNode(object):
                                           'state_theta_right_upper_neck_tilt':[],
                                           'state_theta_left_eye': [],
                                           'state_theta_tilt':[],
+                                          'rvec_0': [],
+                                          'rvec_1': [],
+                                          'rvec_2': [],
+                                          'tvec_0': [],
+                                          'tvec_1': [],
+                                          'tvec_2': [],
                                           }
                     
                     right_headeyes_dict = {'x_c': [],
@@ -343,6 +356,12 @@ class HeadEyesSweepNode(object):
                                            'state_theta_right_upper_neck_tilt':[],
                                            'state_theta_right_eye': [],
                                            'state_theta_tilt':[],
+                                           'rvec_0': [],
+                                           'rvec_1': [],
+                                           'rvec_2': [],
+                                           'tvec_0': [],
+                                           'tvec_1': [],
+                                           'tvec_2': [],
                                           }
 
                     eye_ctr = 0
@@ -392,10 +411,13 @@ class HeadEyesSweepNode(object):
                                                           LEFT_EYE_DIST_COEF, 
                                                           T_bl)
                                 l_x_c, l_y_c, l_z_c = transform_points([l_X], np.linalg.inv(T_bc)).tolist()[0]
+                                T_cl, rvec_cl, tvec_cl = chest_rgb_to_eye(T_bc, T_bl)
                             else:
                                 l_x_c = -100
                                 l_y_c = -100
                                 l_z_c = -100
+                                rvec_cl = [-100,-100,-100]
+                                tvec_cl = [-100,-100,-100]
 
                             if T_br is not None:
                                 r_X = get_world_deproject('right_eye', 
@@ -403,10 +425,13 @@ class HeadEyesSweepNode(object):
                                                           RIGHT_EYE_DIST_COEF, 
                                                           T_br)
                                 r_x_c, r_y_c, r_z_c = transform_points([r_X], np.linalg.inv(T_bc)).tolist()[0]
+                                T_cr, rvec_cr, tvec_cr = chest_rgb_to_eye(T_bc, T_br)
                             else:
                                 r_x_c = -100
                                 r_y_c = -100
                                 r_z_c = -100
+                                rvec_cr = [-100,-100,-100]
+                                tvec_cr = [-100,-100,-100]
 
                             # Storage
                             left_headeyes_dict['x_c'].append(l_x_c)
@@ -424,6 +449,12 @@ class HeadEyesSweepNode(object):
                             left_headeyes_dict['state_theta_right_upper_neck_tilt'].append(motor_state[5])
                             left_headeyes_dict['state_theta_left_eye'].append(motor_state[0])
                             left_headeyes_dict['state_theta_tilt'].append(motor_state[2])
+                            left_headeyes_dict['rvec_0'].append(rvec_cl[0])
+                            left_headeyes_dict['rvec_1'].append(rvec_cl[1])
+                            left_headeyes_dict['rvec_2'].append(rvec_cl[2])
+                            left_headeyes_dict['tvec_0'].append(tvec_cl[0])
+                            left_headeyes_dict['tvec_1'].append(tvec_cl[1])
+                            left_headeyes_dict['tvec_2'].append(tvec_cl[2])
 
                             right_headeyes_dict['x_c'].append(r_x_c)
                             right_headeyes_dict['y_c'].append(r_y_c)
@@ -440,6 +471,12 @@ class HeadEyesSweepNode(object):
                             right_headeyes_dict['state_theta_right_upper_neck_tilt'].append(motor_state[5])
                             right_headeyes_dict['state_theta_right_eye'].append(motor_state[1])
                             right_headeyes_dict['state_theta_tilt'].append(motor_state[2])
+                            right_headeyes_dict['rvec_0'].append(rvec_cr[0])
+                            right_headeyes_dict['rvec_1'].append(rvec_cr[1])
+                            right_headeyes_dict['rvec_2'].append(rvec_cr[2])
+                            right_headeyes_dict['tvec_0'].append(tvec_cr[0])
+                            right_headeyes_dict['tvec_1'].append(tvec_cr[1])
+                            right_headeyes_dict['tvec_2'].append(tvec_cr[2])
 
                             # Counter
                             eye_ctr+=1
