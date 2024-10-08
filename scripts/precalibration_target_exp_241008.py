@@ -317,8 +317,9 @@ class VisuoMotorNode(object):
             charuco_id2pts = dict(zip(charuco_ids.flatten(),obj_points.squeeze()))
             
             # Defined Targets
-            charuco_targets = [62,63,
-                            76,77]
+            charuco_targets = [48,49,50,
+                                62,63,64,
+                                76,77,78]
             charuco_target_idx = [charuco_ids.flatten().tolist().index(x) for x in charuco_targets]
             
             # Charuco Display
@@ -333,17 +334,17 @@ class VisuoMotorNode(object):
                 proj_pts = T_bc @ np.array([charuco_id2pts[x][0],charuco_id2pts[x][1],0,1])
                 proj_pts_list.append(proj_pts)
 
-            print(f"Charuco 62 depth (m): {proj_pts_list[0][2]}")
-            print(f"Charuco 63 depth (m): {proj_pts_list[1][2]}")
-            print(f"Charuco 76 depth (m): {proj_pts_list[2][2]}")
-            print(f"Charuco 77 depth (m): {proj_pts_list[3][2]}")
+            print(f"Charuco 48 depth (m): {proj_pts_list[0][2]}")
+            print(f"Charuco 50 depth (m): {proj_pts_list[2][2]}")
+            print(f"Charuco 76 depth (m): {proj_pts_list[6][2]}")
+            print(f"Charuco 78 depth (m): {proj_pts_list[8][2]}")
 
             # Visualization
             left_img = self.ctr_cross_img(copy.deepcopy(self.left_img), 'left_eye')
             right_img = self.ctr_cross_img(copy.deepcopy(self.right_img), 'right_eye')
             chest_img = self.ctr_cross_img(copy.deepcopy(self.chest_img), 'chest_cam')
             # concat_img = np.hstack((chest_img, left_img, right_img))
-            chest_roi_img = cv2.rectangle(copy.deepcopy(chest_disp), (350,208), (463,319), (0, 255, 0), 2)
+            chest_roi_img = cv2.rectangle(copy.deepcopy(chest_disp), (345,122), (545,322), (0, 255, 0), 2)
             concat_img = np.hstack((chest_roi_img, left_img, right_img))
 
             # Resizing
