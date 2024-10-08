@@ -354,7 +354,7 @@ class VisuoMotorNode(object):
             right_img = self.ctr_cross_img(copy.deepcopy(right_img), 'right_eye')
             chest_img = self.ctr_cross_img(copy.deepcopy(chest_img), 'chest_cam')
             # concat_img = np.hstack((chest_img, left_img, right_img))
-            chest_roi_img = cv2.rectangle(copy.deepcopy(self.chest_img), (190,69), (663,220), (0, 255, 0), 2)
+            chest_roi_img = cv2.rectangle(copy.deepcopy(self.chest_img), (350,208), (463,319), (0, 255, 0), 2)
             concat_img = np.hstack((chest_roi_img, self.left_img, self.right_img))
 
             # Resizing
