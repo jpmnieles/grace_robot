@@ -32,6 +32,62 @@ from aec.baseline import BaselineCalibration
 from grace.attention import *
 
 
+CALIB_PARAMS = load_json('config/calib/calib_params.json')
+CAMERA_MTX = load_json("config/camera/camera_mtx.json")
+LEFT_EYE_CAMERA_MTX = np.array(CAMERA_MTX['left_eye']['camera_matrix'])
+LEFT_EYE_DIST_COEF = np.array(CAMERA_MTX['left_eye']['distortion_coefficients']).squeeze()
+RIGHT_EYE_CAMERA_MTX = np.array(CAMERA_MTX['right_eye']['camera_matrix'])
+RIGHT_EYE_DIST_COEF = np.array(CAMERA_MTX['right_eye']['distortion_coefficients']).squeeze()
+CHEST_CAM_CAMERA_MTX = np.array(CAMERA_MTX['chest_cam']['camera_matrix'])
+CHEST_CAM_DIST_COEF = np.array(CAMERA_MTX['chest_cam']['distortion_coefficients']).squeeze()
+
+
+attention = ExpChArucoAttention()
+
+def get_obj_pts_chest(img, camera_mtx, dist_coef):
+    # Input
+    image_copy = np.copy(img)
+    
+    # Function
+    charuco_corners, charuco_ids, marker_corners, marker_ids = attention.charuco_detector.detectBoard(image_copy)
+    if not (charuco_ids is None) and len(charuco_ids) > 0:
+        if len(camera_mtx) > 0 and len(charuco_ids) >= 4:
+            try:
+                obj_points, img_points = attention.board.matchImagePoints(charuco_corners, charuco_ids)
+                flag, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_mtx, dist_coef)
+                if flag:
+                    # Convert the rotation vector to a rotation matrix
+                    rotation_matrix, _ = cv2.Rodrigues(rvec)
+
+                    # Homogeneous Coordinates (H = Tbc =T_board2cam)
+                    T = np.eye(4)
+                    T[:3,:3] = rotation_matrix
+                    T[:3,-1] = tvec.T
+
+            except cv2.error as error_inst:
+                print("SolvePnP recognize calibration pattern as non-planar pattern. To process this need to use "
+                      "minimum 6 points. The planar pattern may be mistaken for non-planar if the pattern is "
+                      "deformed or incorrect camera parameters are used.")
+                print(error_inst.err)
+                T = None
+                
+    # Mapping
+    charuco_id2pts = dict(zip(charuco_ids.flatten(),obj_points.squeeze()))
+    
+    # Defined Targets
+    charuco_targets = [62,63,
+                       76,77]
+    
+    # Get Projections
+    T_bc = T
+    proj_pts_list = []
+    for x in charuco_targets:
+        proj_pts = T_bc @ np.array([charuco_id2pts[x][0],charuco_id2pts[x][1],0,1])
+        proj_pts_list.append(proj_pts)
+    
+    return proj_pts_list
+
+
 class VisuoMotorNode(object):
 
     rl_state = {  # RL environment on the network takes care of the other side
@@ -170,18 +226,6 @@ class VisuoMotorNode(object):
             cv2.imwrite(leftimg_path, self.left_img)
             cv2.imwrite(rightimg_path, self.right_img)
 
-            # Saving to Notepad File
-            json_data = {
-                "chest_cam_px": self.chest_cam_px,
-                "left_eye_px": self.left_eye_px,
-                "right_eye_px": self.right_eye_px,
-            }
-            print(json_data)
-            with open(json_path, 'w') as f:
-                json.dump(json_data, f)
-            print('=====================')
-            print('Json file saved in:', json_path)
-
     def _capture_state(self, msg):
         """Callback for capturing motor state
         """
@@ -232,11 +276,6 @@ class VisuoMotorNode(object):
             rospy.loginfo(f'FPS: {1/elapsed_time: .{2}f}')
             self.frame_stamp_tminus1 = max_stamp
 
-            # Initialization
-            dx_l, dy_l, dx_r, dy_r = 0, 0, 0, 0
-            theta_l_pan, theta_r_pan = None, None
-            theta_l_tilt, theta_r_tilt, theta_tilt = None, None, None
-
             # Conversion of ROS Message
             self.left_img = self.bridge.imgmsg_to_cv2(left_img_msg, "bgr8")
             self.right_img = self.bridge.imgmsg_to_cv2(right_img_msg, "bgr8")
@@ -251,111 +290,61 @@ class VisuoMotorNode(object):
             print('Median depth of ROI(m):', np.median(self.depth_img[69:221,190:664])/1000.0)
 
             ## Attention ##
+            chest_disp = copy.deepcopy(self.chest_img)
+            charuco_corners, charuco_ids, marker_corners, marker_ids = attention.charuco_detector.detectBoard(chest_disp)
+            if not (charuco_ids is None) and len(charuco_ids) > 0:
+                if len(CHEST_CAM_CAMERA_MTX) > 0 and len(charuco_ids) >= 4:
+                    try:
+                        obj_points, img_points = attention.board.matchImagePoints(charuco_corners, charuco_ids)
+                        flag, rvec, tvec = cv2.solvePnP(obj_points, img_points, CHEST_CAM_CAMERA_MTX, CHEST_CAM_DIST_COEF)
+                        if flag:
+                            # Convert the rotation vector to a rotation matrix
+                            rotation_matrix, _ = cv2.Rodrigues(rvec)
 
-            # Process Left Eye, Right Eye, Chest Cam Target
-            l_gray = cv2.cvtColor(copy.deepcopy(self.left_img), cv2.COLOR_BGR2GRAY)
-            r_gray = cv2.cvtColor(copy.deepcopy(self.right_img), cv2.COLOR_BGR2GRAY)
-            c_gray = cv2.cvtColor(copy.deepcopy(self.chest_img), cv2.COLOR_BGR2GRAY)
+                            # Homogeneous Coordinates (H = Tbc =T_board2cam)
+                            T = np.eye(4)
+                            T[:3,:3] = rotation_matrix
+                            T[:3,-1] = tvec.T
 
-            l_detections = self.detector(l_gray, 0)
-            r_detections = self.detector(r_gray, 0)
-            c_detections = self.detector(c_gray, 0)
-
-            if len(c_detections) > 0:
-                c_detection = c_detections[0]
-                landmarks = self.predictor(c_gray, c_detection)
-                x_target = landmarks.part(28).x
-                y_target = landmarks.part(28).y
-                chest_cam_px = (x_target, y_target)
-                chest_img = cv2.rectangle(copy.deepcopy(self.chest_img), (c_detection.left(), c_detection.top()), 
-                              (c_detection.right(), c_detection.bottom()), (0, 0, 255), 2)
-                chest_img = cv2.drawMarker(chest_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            else:
-                chest_cam_px = (240, 200)
-                chest_img = self.chest_img
-
-            if len(l_detections) > 0:
-                l_detection = l_detections[0]
-                landmarks = self.predictor(l_gray, l_detection)
-                x_target = landmarks.part(28).x
-                y_target = landmarks.part(28).y
-                left_eye_px = (x_target, y_target)
-                left_img = cv2.rectangle(copy.deepcopy(self.left_img), (l_detection.left(), l_detection.top()), 
-                              (l_detection.right(), l_detection.bottom()), (0, 0, 255), 2)
-                left_img = cv2.drawMarker(left_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            else:
-                left_eye_px = (-4, -4)
-                left_img = self.left_img
+                    except cv2.error as error_inst:
+                        print("SolvePnP recognize calibration pattern as non-planar pattern. To process this need to use "
+                            "minimum 6 points. The planar pattern may be mistaken for non-planar if the pattern is "
+                            "deformed or incorrect camera parameters are used.")
+                        print(error_inst.err)
+                        T = None
+                        
+            # Mapping
+            charuco_id2pts = dict(zip(charuco_ids.flatten(),obj_points.squeeze()))
             
-            if len(r_detections) > 0:
-                r_detection = r_detections[0]
-                landmarks = self.predictor(r_gray, r_detection)
-                x_target = landmarks.part(28).x
-                y_target = landmarks.part(28).y
-                right_eye_px = (x_target, y_target)
-                right_img = cv2.rectangle(copy.deepcopy(self.right_img), (r_detection.left(), r_detection.top()), 
-                              (r_detection.right(), r_detection.bottom()), (0, 0, 255), 2)
-                right_img = cv2.drawMarker(right_img, (round(x_target),round(y_target)), color=(255, 0, 0), markerType=cv2.MARKER_TILTED_CROSS, markerSize=13, thickness=2)
-            else:
-                right_eye_px = (-4, -4)
-                right_img = self.right_img
-
-            # Saving Pixel Targets
-            self.chest_cam_px = copy.deepcopy(chest_cam_px)
-            self.left_eye_px = copy.deepcopy(left_eye_px)
-            self.right_eye_px = copy.deepcopy(right_eye_px)
-
-            ## Geometric Intersection
-            x,y,z = self.depth_to_pointcloud(chest_cam_px, self.depth_img, self.camera_mtx['chest_cam']['camera_matrix'], z_replace=1.0)
-            pts = self.transform_points(np.array([[x,y,z]]), np.array(self.calib_params['transformations']["T_origin_chest"])).squeeze()
-            T_origin_left_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
-                                 @ np.array(self.calib_params['transformations']["T_chest_left_eye"]) 
-                                 @ np.array(self.calib_params['transformations']["T_left_eye_gaze_ctr"]))
-            T_origin_right_eye_ctr = (np.array(self.calib_params['transformations']["T_origin_chest"]) 
-                                  @ np.array(self.calib_params['transformations']["T_chest_right_eye"])
-                                  @ np.array(self.calib_params['transformations']["T_right_eye_gaze_ctr"]))
+            # Defined Targets
+            charuco_targets = [62,63,
+                            76,77]
+            charuco_target_idx = [charuco_ids.flatten().tolist().index(x) for x in charuco_targets]
             
-            # OpenCV Orientation: x (to the right), y (to down), z (straight away from robot, depth)
-            target_x = pts[0]
-            target_y = pts[1]
-            target_z = max(0.3, pts[2])
-            target_pts = np.array([[target_x, target_y, target_z]])
-
-            # Angles Calculation
-            left_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_left_eye_ctr)).squeeze()
-            right_eye_pts = self.transform_points(target_pts, np.linalg.inv(T_origin_right_eye_ctr)).squeeze()
-            left_tilt = -math.atan2(left_eye_pts[1], left_eye_pts[2])
-            right_tilt = -math.atan2(right_eye_pts[1], right_eye_pts[2])
-            eyes_tilt = math.degrees((left_tilt + right_tilt)/2)  # OpenCV coordinates: CW is positive
-            left_pan = math.degrees(math.atan2(left_eye_pts[0], left_eye_pts[2]))
-            right_pan = math.degrees(math.atan2(right_eye_pts[0], right_eye_pts[2]))
+            # Charuco Display
+            if not (charuco_ids is None) and len(charuco_ids) > 0:
+                chest_disp = aruco.drawDetectedCornersCharuco(chest_disp, np.array([charuco_corners[i] for i in charuco_target_idx]).reshape(-1,1,2),
+                                                               np.array(charuco_targets).reshape(-1,1))
             
-            # Publish Joint States
-            if target_z != 0.3:                
-                # Output of the Geometric Intersection
-                theta_l_pan = left_pan/self.calib_params['left_eye']['slope']
-                theta_r_pan = right_pan/self.calib_params['right_eye']['slope']
-                theta_tilt = eyes_tilt/self.calib_params['tilt_eyes']['slope']
+            # Get Projections
+            T_bc = T
+            proj_pts_list = []
+            for x in charuco_targets:
+                proj_pts = T_bc @ np.array([charuco_id2pts[x][0],charuco_id2pts[x][1],0,1])
+                proj_pts_list.append(proj_pts)
 
-            with self.action_lock:
-                if self.action != None:
-                    theta_l_pan = self.action[0]
-                    theta_r_pan = self.action[1]
-                    theta_tilt = self.action[2]
-
-            if (theta_l_pan is not None) or (theta_r_pan is not None) or (theta_tilt is not None):
-                print('theta_l_pan:', theta_l_pan)
-                print('theta_r_pan:', theta_r_pan)
-                print('theta_tilt:', theta_tilt)
-                # self.move([theta_l_pan, theta_r_pan, theta_tilt])
+            print(f"Charuco 62 depth (m): {proj_pts_list[0][2]}")
+            print(f"Charuco 63 depth (m): {proj_pts_list[1][2]}")
+            print(f"Charuco 76 depth (m): {proj_pts_list[2][2]}")
+            print(f"Charuco 77 depth (m): {proj_pts_list[3][2]}")
 
             # Visualization
-            left_img = self.ctr_cross_img(copy.deepcopy(left_img), 'left_eye')
-            right_img = self.ctr_cross_img(copy.deepcopy(right_img), 'right_eye')
-            chest_img = self.ctr_cross_img(copy.deepcopy(chest_img), 'chest_cam')
+            left_img = self.ctr_cross_img(copy.deepcopy(self.left_img), 'left_eye')
+            right_img = self.ctr_cross_img(copy.deepcopy(self.right_img), 'right_eye')
+            chest_img = self.ctr_cross_img(copy.deepcopy(self.chest_img), 'chest_cam')
             # concat_img = np.hstack((chest_img, left_img, right_img))
-            chest_roi_img = cv2.rectangle(copy.deepcopy(self.chest_img), (350,208), (463,319), (0, 255, 0), 2)
-            concat_img = np.hstack((chest_roi_img, self.left_img, self.right_img))
+            chest_roi_img = cv2.rectangle(copy.deepcopy(chest_disp), (350,208), (463,319), (0, 255, 0), 2)
+            concat_img = np.hstack((chest_roi_img, left_img, right_img))
 
             # Resizing
             height, width = concat_img.shape[:2]
